@@ -1,10 +1,45 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { autoBreed, breed, calculatePhenotype, createFounder, type FounderBreed, type FounderMutation } from './genetics'
+import {
+  autoBreed,
+  breed,
+  calculatePhenotype,
+  createFounder,
+  DEFAULT_ENVIRONMENT,
+  describeAdaptations,
+  environmentFitness,
+  upgradeGenome,
+  type FounderBreed,
+  type FounderCustomization,
+} from './genetics'
 import { CatPreview } from './CatPreview'
 import { Cat3DViewer } from './three/Cat3DViewer'
-import type { Individual, SimulationState } from './types'
+import type {
+  CoatPattern,
+  EarShape,
+  EnvironmentSettings,
+  Individual,
+  MutationKey,
+  SimulationState,
+  TerrainType,
+} from './types'
 
 const STORAGE_KEY = 'genetic-mutator-v1'
+
+const FOUNDER_PRESETS:Record<FounderBreed,Pick<FounderCustomization,'furLength'|'tailLength'|'bodyLength'|'canineLength'|'legLength'|'earSize'|'earShape'>> = {
+  Bengal:{furLength:.20,tailLength:.72,bodyLength:.62,canineLength:.58,legLength:.66,earSize:.56,earShape:'pointed'},
+  'Maine Coon':{furLength:.90,tailLength:.78,bodyLength:.84,canineLength:.58,legLength:.60,earSize:.72,earShape:'pointed'},
+  Siberian:{furLength:.82,tailLength:.72,bodyLength:.76,canineLength:.60,legLength:.61,earSize:.54,earShape:'balanced'},
+  Custom:{furLength:.45,tailLength:.68,bodyLength:.60,canineLength:.50,legLength:.58,earSize:.52,earShape:'balanced'},
+}
+
+const ENVIRONMENT_PRESETS:EnvironmentSettings[] = [
+  DEFAULT_ENVIRONMENT,
+  {name:'Arctic tundra',temperatureC:-12,terrain:'open',foodAvailability:.35,preySpeed:.68,coverDensity:.18,selectionStrength:.88},
+  {name:'Hot desert',temperatureC:36,terrain:'rocky',foodAvailability:.25,preySpeed:.72,coverDensity:.12,selectionStrength:.86},
+  {name:'Dense forest',temperatureC:16,terrain:'forest',foodAvailability:.72,preySpeed:.48,coverDensity:.92,selectionStrength:.76},
+  {name:'Rocky highland',temperatureC:4,terrain:'rocky',foodAvailability:.44,preySpeed:.70,coverDensity:.24,selectionStrength:.82},
+  {name:'Warm wetland',temperatureC:27,terrain:'wetland',foodAvailability:.78,preySpeed:.46,coverDensity:.74,selectionStrength:.70},
+]
 
 function makeInitialState(): SimulationState {
   const lineage = 'Foundation'
@@ -22,6 +57,7 @@ function makeInitialState(): SimulationState {
     units: 'imperial',
     lineage,
     currentGeneration: 0,
+    environment:{...DEFAULT_ENVIRONMENT},
   }
 }
 
@@ -32,13 +68,20 @@ function loadState(): SimulationState {
     const parsed = JSON.parse(raw) as SimulationState
     if (!Array.isArray(parsed.individuals) || !parsed.individuals.length) return makeInitialState()
 
-    // Re-resolve saved phenotypes from their genomes so visual/genetic fixes
-    // apply to existing cats without deleting the player's population.
-    const individuals = parsed.individuals.map(animal => ({
-      ...animal,
-      phenotype: calculatePhenotype(animal),
-    }))
-    return {...parsed, individuals}
+    const individuals = parsed.individuals.map(animal => {
+      const genome=upgradeGenome(animal.genome)
+      return {
+        ...animal,
+        genome,
+        phenotype:calculatePhenotype({...animal,genome}),
+      }
+    })
+
+    return {
+      ...parsed,
+      individuals,
+      environment:{...DEFAULT_ENVIRONMENT,...(parsed.environment || {})},
+    }
   } catch {
     return makeInitialState()
   }
@@ -52,9 +95,12 @@ function length(valueCm: number, units: SimulationState['units']) {
   return units === 'imperial' ? `${(valueCm / 2.54).toFixed(1)} in` : `${valueCm.toFixed(1)} cm`
 }
 
+const percent=(value:number)=>`${Math.round(value*100)}%`
+
 export function App() {
-  const [state, setState] = useState<SimulationState>(loadState)
-  const [selectedId, setSelectedId] = useState<string>(() => loadState().individuals[0]?.id || '')
+  const initial=useMemo(()=>loadState(),[])
+  const [state, setState] = useState<SimulationState>(initial)
+  const [selectedId, setSelectedId] = useState<string>(initial.individuals[0]?.id || '')
   const [status, setStatus] = useState('Ready')
   const [autoGenerations, setAutoGenerations] = useState(10)
   const [populationSize, setPopulationSize] = useState(24)
@@ -62,7 +108,15 @@ export function App() {
   const [founderName, setFounderName] = useState('New Founder')
   const [founderSex, setFounderSex] = useState<'male'|'female'>('female')
   const [founderBreed, setFounderBreed] = useState<FounderBreed>('Custom')
-  const [founderMutation, setFounderMutation] = useState<FounderMutation>('none')
+  const [founderPattern,setFounderPattern]=useState<'auto'|CoatPattern>('auto')
+  const [founderMutations,setFounderMutations]=useState<MutationKey[]>([])
+  const [founderFurLength,setFounderFurLength]=useState(.45)
+  const [founderTailLength,setFounderTailLength]=useState(.68)
+  const [founderBodyLength,setFounderBodyLength]=useState(.60)
+  const [founderCanineLength,setFounderCanineLength]=useState(.50)
+  const [founderLegLength,setFounderLegLength]=useState(.58)
+  const [founderEarSize,setFounderEarSize]=useState(.52)
+  const [founderEarShape,setFounderEarShape]=useState<EarShape>('balanced')
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
@@ -73,15 +127,46 @@ export function App() {
   const males = state.individuals.filter(a => a.sex === 'male')
   const mother = females.find(a => a.id === state.selectedMotherId)
   const father = males.find(a => a.id === state.selectedFatherId)
+  const selectedFitness=selected?environmentFitness(selected,state.environment):0
+  const selectedAdaptations=selected?describeAdaptations(selected,state.environment):[]
 
   const stats = useMemo(() => {
     const animals = state.individuals
     const avgWeight = animals.reduce((sum,a) => sum + a.phenotype.weightKg,0) / Math.max(1,animals.length)
     const avgHeight = animals.reduce((sum,a) => sum + a.phenotype.shoulderCm,0) / Math.max(1,animals.length)
-    const largest = [...animals].sort((a,b) => b.phenotype.weightKg-a.phenotype.weightKg)[0]
     const mutationCount = animals.filter(a => a.phenotype.mutationLabels.length).length
-    return {avgWeight,avgHeight,largest,mutationCount}
-  }, [state.individuals])
+    const avgFitness=animals.reduce((sum,a)=>sum+environmentFitness(a,state.environment),0)/Math.max(1,animals.length)
+    return {avgWeight,avgHeight,mutationCount,avgFitness}
+  }, [state.individuals,state.environment])
+
+  function updateEnvironment(patch:Partial<EnvironmentSettings>) {
+    setState(s=>({...s,environment:{...s.environment,...patch}}))
+  }
+
+  function applyEnvironmentPreset(name:string) {
+    const preset=ENVIRONMENT_PRESETS.find(p=>p.name===name)
+    if (preset) setState(s=>({...s,environment:{...preset}}))
+  }
+
+  function applyBreedPreset(breed:FounderBreed) {
+    setFounderBreed(breed)
+    const p=FOUNDER_PRESETS[breed]
+    setFounderFurLength(p.furLength)
+    setFounderTailLength(p.tailLength)
+    setFounderBodyLength(p.bodyLength)
+    setFounderCanineLength(p.canineLength)
+    setFounderLegLength(p.legLength)
+    setFounderEarSize(p.earSize)
+    setFounderEarShape(p.earShape)
+  }
+
+  function toggleFounderMutation(mutation:MutationKey) {
+    setFounderMutations(current=>
+      current.includes(mutation)
+        ? current.filter(m=>m!==mutation)
+        : [...current,mutation]
+    )
+  }
 
   function addChild() {
     if (!mother || !father) {
@@ -89,14 +174,15 @@ export function App() {
       return
     }
     try {
-      const child = breed(mother,father,state.lineage,undefined,mutationRate)
+      const child = breed(mother,father,state.lineage,undefined,mutationRate,'manual',state.environment)
+      const fitness=environmentFitness(child,state.environment)
       setState(s => ({
         ...s,
         individuals:[child,...s.individuals],
         currentGeneration: Math.max(s.currentGeneration,child.generation),
       }))
       setSelectedId(child.id)
-      setStatus(`${child.name} was born in generation ${child.generation}.`)
+      setStatus(`${child.name} survived its litter in ${state.environment.name} · environmental fitness ${percent(fitness)}.`)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Breeding failed.')
     }
@@ -106,7 +192,7 @@ export function App() {
     const requested = Math.max(1,Math.floor(autoGenerations))
     const batch = Math.min(requested,5000)
     const breedingPool = state.individuals.filter(a => a.lineage === state.lineage)
-    setStatus(`Running ${batch.toLocaleString()} generations…`)
+    setStatus(`Running ${batch.toLocaleString()} generations under ${state.environment.name} selection…`)
     try {
       const finalPopulation = autoBreed(
         breedingPool.length >= 2 ? breedingPool : state.individuals,
@@ -114,15 +200,17 @@ export function App() {
         state.lineage,
         Math.max(4,Math.min(200,Math.floor(populationSize))),
         Math.max(0,Math.min(.25,mutationRate)),
+        state.environment,
       )
       const highestGeneration = Math.max(...finalPopulation.map(a => a.generation))
+      const avgFit=finalPopulation.reduce((sum,a)=>sum+environmentFitness(a,state.environment),0)/Math.max(1,finalPopulation.length)
       setState(s => ({
         ...s,
         individuals:[...finalPopulation,...s.individuals],
         currentGeneration: Math.max(s.currentGeneration,highestGeneration),
       }))
       setSelectedId(finalPopulation[0]?.id || selectedId)
-      setStatus(`Auto Breed completed ${batch.toLocaleString()} generations. The lineage is now at generation ${highestGeneration.toLocaleString()}.`)
+      setStatus(`Auto Breed completed ${batch.toLocaleString()} generations in ${state.environment.name}. G${highestGeneration.toLocaleString()} mean fitness: ${percent(avgFit)}.`)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Auto Breed failed.')
     }
@@ -130,10 +218,21 @@ export function App() {
 
   function addFounder(event: FormEvent) {
     event.preventDefault()
-    const founder = createFounder(founderName.trim() || 'Founder',founderSex,founderBreed,state.lineage,.5,founderMutation)
+    const customization:FounderCustomization={
+      mutations:founderMutations,
+      pattern:founderPattern,
+      furLength:founderFurLength,
+      tailLength:founderTailLength,
+      bodyLength:founderBodyLength,
+      canineLength:founderCanineLength,
+      legLength:founderLegLength,
+      earSize:founderEarSize,
+      earShape:founderEarShape,
+    }
+    const founder = createFounder(founderName.trim() || 'Founder',founderSex,founderBreed,state.lineage,.5,customization)
     setState(s => ({...s,individuals:[founder,...s.individuals]}))
     setSelectedId(founder.id)
-    setStatus(`${founder.name} added as a new unrelated founder${founderMutation==='none'?'':` with expressed ${founderMutation}`}.`)
+    setStatus(`${founder.name} added with a customized inherited genome.`)
   }
 
   function resetSimulation() {
@@ -149,7 +248,7 @@ export function App() {
         <div>
           <div className="eyebrow">FELINE_01 GENOME LAB</div>
           <h1>Genetic Mutator</h1>
-          <p>Breed real inherited genomes, select across generations, and watch phenotype change.</p>
+          <p>Build inherited feline genomes, change their environment, and watch natural selection reshape the lineage.</p>
         </div>
         <div className="header-actions">
           <div className="segmented" aria-label="Measurement system">
@@ -166,6 +265,7 @@ export function App() {
         <div><span>Avg. weight</span><strong>{weight(stats.avgWeight,state.units)}</strong></div>
         <div><span>Avg. shoulder</span><strong>{length(stats.avgHeight,state.units)}</strong></div>
         <div><span>Mutation phenotypes</span><strong>{stats.mutationCount}</strong></div>
+        <div><span>Mean habitat fitness</span><strong>{percent(stats.avgFitness)}</strong></div>
       </section>
 
       <main className="main-grid">
@@ -177,7 +277,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.3.1 mutation coat fix · saved phenotypes refreshed</small>
+                <small>Phase 7.4 founder genome editor + environmental natural selection</small>
               </div>
               <Cat3DViewer animal={selected} />
               <div className="animal-facts">
@@ -187,18 +287,60 @@ export function App() {
                 <div><span>Shoulder</span><strong>{length(selected.phenotype.shoulderCm,state.units)}</strong></div>
                 <div><span>Body length</span><strong>{length(selected.phenotype.bodyLengthCm,state.units)}</strong></div>
                 <div><span>Tail length</span><strong>{length(selected.phenotype.tailLengthCm,state.units)}</strong></div>
+                <div><span>Canine length</span><strong>{length(selected.phenotype.canineLengthCm,state.units)}</strong></div>
+                <div><span>Ears</span><strong>{selected.phenotype.earShape} · {selected.phenotype.earSize.toFixed(2)}×</strong></div>
+                <div><span>Habitat fitness</span><strong>{percent(selectedFitness)}</strong></div>
               </div>
               <div className="tag-row">
                 <span className="tag">{selected.lineage}</span>
                 <span className="tag">{selected.phenotype.coatName}</span>
                 <span className="tag">{selected.phenotype.pattern}</span>
                 {selected.phenotype.mutationLabels.map(m => <span className="tag mutation" key={m}>{m}</span>)}
+                {selectedAdaptations.map(a=><span className="tag adaptation" key={a}>{a}</span>)}
               </div>
             </>
           ) : <p>No animal selected.</p>}
         </section>
 
         <aside className="control-stack">
+          <section className="panel environment-panel">
+            <div className="section-title">
+              <div><span>RAISED ENVIRONMENT</span><h2>Natural selection</h2></div>
+            </div>
+            <p className="helper">The environment does not create directed mutations. Random inherited variation still occurs; this habitat changes which kittens survive and which adults contribute most strongly to later generations.</p>
+            <label>Environment preset
+              <select value={ENVIRONMENT_PRESETS.some(p=>p.name===state.environment.name)?state.environment.name:''} onChange={e=>applyEnvironmentPreset(e.target.value)}>
+                <option value="">Custom environment</option>
+                {ENVIRONMENT_PRESETS.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+            </label>
+            <div className="two-col">
+              <label>Temperature <span className="inline-value">{state.environment.temperatureC}°C</span>
+                <input type="range" min="-25" max="45" step="1" value={state.environment.temperatureC} onChange={e=>updateEnvironment({name:'Custom environment',temperatureC:Number(e.target.value)})} />
+              </label>
+              <label>Terrain
+                <select value={state.environment.terrain} onChange={e=>updateEnvironment({name:'Custom environment',terrain:e.target.value as TerrainType})}>
+                  <option value="open">Open</option>
+                  <option value="forest">Forest</option>
+                  <option value="rocky">Rocky</option>
+                  <option value="wetland">Wetland</option>
+                </select>
+              </label>
+            </div>
+            <label>Food availability <span className="inline-value">{percent(state.environment.foodAvailability)}</span>
+              <input type="range" min="0" max="1" step=".01" value={state.environment.foodAvailability} onChange={e=>updateEnvironment({name:'Custom environment',foodAvailability:Number(e.target.value)})} />
+            </label>
+            <label>Prey speed / chase pressure <span className="inline-value">{percent(state.environment.preySpeed)}</span>
+              <input type="range" min="0" max="1" step=".01" value={state.environment.preySpeed} onChange={e=>updateEnvironment({name:'Custom environment',preySpeed:Number(e.target.value)})} />
+            </label>
+            <label>Vegetation / cover density <span className="inline-value">{percent(state.environment.coverDensity)}</span>
+              <input type="range" min="0" max="1" step=".01" value={state.environment.coverDensity} onChange={e=>updateEnvironment({name:'Custom environment',coverDensity:Number(e.target.value)})} />
+            </label>
+            <label>Natural-selection strength <span className="inline-value">{percent(state.environment.selectionStrength)}</span>
+              <input type="range" min="0" max="1" step=".01" value={state.environment.selectionStrength} onChange={e=>updateEnvironment({selectionStrength:Number(e.target.value)})} />
+            </label>
+          </section>
+
           <section className="panel">
             <div className="section-title">
               <div><span>MANUAL BREEDING</span><h2>Choose parents</h2></div>
@@ -218,14 +360,14 @@ export function App() {
             <label>Lineage
               <input value={state.lineage} onChange={e=>setState(s=>({...s,lineage:e.target.value || 'Foundation'}))} />
             </label>
-            <button className="primary wide" onClick={addChild}>Breed one offspring</button>
+            <button className="primary wide" onClick={addChild}>Breed litter + select survivor</button>
           </section>
 
           <section className="panel">
             <div className="section-title">
               <div><span>AUTOMATED SELECTION</span><h2>Auto Breed</h2></div>
             </div>
-            <p className="helper">Current selection goal: larger body mass while retaining multiple breeders. Batch runs are limited to 5,000 generations for browser responsiveness; generation numbering itself is not capped.</p>
+            <p className="helper">Each generation produces excess offspring. Survival and breeding rank are weighted by the active environment, so traits can shift over many generations as new random variation appears.</p>
             <div className="two-col">
               <label>Generations
                 <input type="number" min="1" value={autoGenerations} onChange={e=>setAutoGenerations(Number(e.target.value)||1)} />
@@ -237,11 +379,11 @@ export function App() {
             <label>Mutation rate <span className="inline-value">{(mutationRate*100).toFixed(2)}%</span>
               <input type="range" min="0" max=".08" step=".001" value={mutationRate} onChange={e=>setMutationRate(Number(e.target.value))} />
             </label>
-            <button className="primary wide" onClick={runAutoBreed}>Start Auto Breed</button>
+            <button className="primary wide" onClick={runAutoBreed}>Start environmental Auto Breed</button>
           </section>
 
-          <section className="panel">
-            <div className="section-title"><div><span>FOUNDERS</span><h2>Add unrelated animal</h2></div></div>
+          <section className="panel founder-editor">
+            <div className="section-title"><div><span>FOUNDERS</span><h2>Customize unrelated animal</h2></div></div>
             <form onSubmit={addFounder}>
               <label>Name<input value={founderName} onChange={e=>setFounderName(e.target.value)} /></label>
               <div className="two-col">
@@ -252,22 +394,71 @@ export function App() {
                   </select>
                 </label>
                 <label>Starting type
-                  <select value={founderBreed} onChange={e=>setFounderBreed(e.target.value as FounderBreed)}>
+                  <select value={founderBreed} onChange={e=>applyBreedPreset(e.target.value as FounderBreed)}>
                     <option>Bengal</option><option>Maine Coon</option><option>Siberian</option><option>Custom</option>
                   </select>
                 </label>
               </div>
-              <label>Expressed coat mutation
-                <select value={founderMutation} onChange={e=>setFounderMutation(e.target.value as FounderMutation)}>
-                  <option value="none">None / natural genetics</option>
-                  <option value="melanism">Melanistic</option>
-                  <option value="albinism">Albino</option>
-                  <option value="leucism">Leucistic</option>
-                  <option value="piebald">Piebald</option>
+
+              <label>Coat pattern
+                <select value={founderPattern} onChange={e=>setFounderPattern(e.target.value as 'auto'|CoatPattern)}>
+                  <option value="auto">Breed / genome default</option>
+                  <option value="solid">Solid</option>
+                  <option value="spotted">Spotted</option>
+                  <option value="rosetted">Rosetted</option>
                 </select>
               </label>
-              <p className="helper">Founder mutation choices write the actual inherited locus. Albino founders receive two recessive albinism alleles; melanism, leucism, and piebald are entered as expressed dominant traits.</p>
-              <button className="secondary wide" type="submit">Add founder</button>
+
+              <div className="mutation-selector">
+                <span>Expressed mutations</span>
+                <div className="mutation-grid">
+                  {([
+                    ['melanism','Melanistic'],
+                    ['albinism','Albino'],
+                    ['leucism','Leucistic'],
+                    ['piebald','Piebald'],
+                  ] as [MutationKey,string][]).map(([key,label])=>(
+                    <button
+                      type="button"
+                      key={key}
+                      className={founderMutations.includes(key)?'active':''}
+                      onClick={()=>toggleFounderMutation(key)}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="trait-editor-grid">
+                <label>Fur length <span className="inline-value">{percent(founderFurLength)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderFurLength} onChange={e=>setFounderFurLength(Number(e.target.value))} />
+                </label>
+                <label>Tail length <span className="inline-value">{percent(founderTailLength)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderTailLength} onChange={e=>setFounderTailLength(Number(e.target.value))} />
+                </label>
+                <label>Body length <span className="inline-value">{percent(founderBodyLength)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderBodyLength} onChange={e=>setFounderBodyLength(Number(e.target.value))} />
+                </label>
+                <label>Canine length <span className="inline-value">{percent(founderCanineLength)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderCanineLength} onChange={e=>setFounderCanineLength(Number(e.target.value))} />
+                </label>
+                <label>Leg length <span className="inline-value">{percent(founderLegLength)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderLegLength} onChange={e=>setFounderLegLength(Number(e.target.value))} />
+                </label>
+                <label>Ear size <span className="inline-value">{percent(founderEarSize)}</span>
+                  <input type="range" min=".05" max=".98" step=".01" value={founderEarSize} onChange={e=>setFounderEarSize(Number(e.target.value))} />
+                </label>
+              </div>
+
+              <label>Ear shape
+                <select value={founderEarShape} onChange={e=>setFounderEarShape(e.target.value as EarShape)}>
+                  <option value="rounded">Rounded</option>
+                  <option value="balanced">Balanced feline</option>
+                  <option value="pointed">Long / pointed</option>
+                </select>
+              </label>
+
+              <p className="helper">These controls seed inherited genes, not permanent presets. Descendants recombine and mutate them. Multiple coat mutations can coexist genetically; phenotype priority still determines what is visible.</p>
+              <button className="secondary wide" type="submit">Add customized founder</button>
             </form>
           </section>
         </aside>
@@ -279,17 +470,21 @@ export function App() {
           <div className="status" aria-live="polite">{status}</div>
         </div>
         <div className="animal-grid">
-          {state.individuals.slice(0,120).map(animal => (
-            <button key={animal.id} className={`animal-card ${animal.id===selected?.id?'selected':''}`} onClick={()=>setSelectedId(animal.id)}>
-              <CatPreview animal={animal} compact />
-              <div className="card-copy">
-                <strong>{animal.name}</strong>
-                <span>{animal.sex} · G{animal.generation.toLocaleString()}</span>
-                <span>{weight(animal.phenotype.weightKg,state.units)} · {length(animal.phenotype.shoulderCm,state.units)} shoulder</span>
-                {animal.phenotype.mutationLabels.length > 0 && <span className="mutation-text">{animal.phenotype.mutationLabels.join(', ')}</span>}
-              </div>
-            </button>
-          ))}
+          {state.individuals.slice(0,120).map(animal => {
+            const fitness=environmentFitness(animal,state.environment)
+            return (
+              <button key={animal.id} className={`animal-card ${animal.id===selected?.id?'selected':''}`} onClick={()=>setSelectedId(animal.id)}>
+                <CatPreview animal={animal} compact />
+                <div className="card-copy">
+                  <strong>{animal.name}</strong>
+                  <span>{animal.sex} · G{animal.generation.toLocaleString()}</span>
+                  <span>{weight(animal.phenotype.weightKg,state.units)} · {length(animal.phenotype.shoulderCm,state.units)} shoulder</span>
+                  <span>{percent(fitness)} habitat fitness</span>
+                  {animal.phenotype.mutationLabels.length > 0 && <span className="mutation-text">{animal.phenotype.mutationLabels.join(', ')}</span>}
+                </div>
+              </button>
+            )
+          })}
         </div>
         {state.individuals.length > 120 && <p className="helper">Showing the newest 120 animals to keep the interface responsive. All {state.individuals.length.toLocaleString()} remain saved.</p>}
       </section>
