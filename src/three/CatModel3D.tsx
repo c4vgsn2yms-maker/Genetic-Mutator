@@ -5,15 +5,18 @@ import type { Group } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture } from './catMaterial'
 import { phenotypeToCatModel } from './catPhenotypeToModel'
-import { createEarGeometry, createFelineCoreGeometry, felineLandmarks } from './felineGeometry'
+import { createEarGeometry, felineLandmarks } from './felineGeometry'
+import { animateFelineRig, createFelineRig } from './felineRig'
+import { createFelineCoreGeometry } from './felineGeometry'
 
 function FelineLeg({
-  x,z,length,pawScale,coatTexture,roughness,hind=false,
+  x,z,length,pawScale,thickness,coatTexture,roughness,hind=false,
 }:{
   x:number
   z:number
   length:number
   pawScale:number
+  thickness:number
   coatTexture:THREE.Texture|null
   roughness:number
   hind?:boolean
@@ -38,21 +41,21 @@ function FelineLeg({
   return (
     <group>
       <mesh position={[x,hipY,z]} rotation={[0,0,hind?-.26:.08]} castShadow>
-        <capsuleGeometry args={[hind?.145:.115,Math.max(.18,upper-.28),8,14]} />
+        <capsuleGeometry args={[(hind?.145:.115)*thickness,Math.max(.18,upper-.28),8,14]} />
         <meshStandardMaterial {...coatProps} />
       </mesh>
 
       <mesh position={[x+backward,kneeY,z]} rotation={[0,0,hind?.30:-.04]} castShadow>
-        <capsuleGeometry args={[hind?.105:.088,Math.max(.16,lower-.20),7,12]} />
+        <capsuleGeometry args={[(hind?.105:.088)*thickness,Math.max(.16,lower-.20),7,12]} />
         <meshStandardMaterial {...coatProps} />
       </mesh>
 
       <mesh position={[x+backward+forwardFoot*.25,ankleY,z]} rotation={[0,0,hind?-.13:.03]} castShadow>
-        <capsuleGeometry args={[.067,Math.max(.11,pastern-.12),6,10]} />
+        <capsuleGeometry args={[.067*thickness,Math.max(.11,pastern-.12),6,10]} />
         <meshStandardMaterial {...coatProps} />
       </mesh>
 
-      <mesh position={[x+backward+forwardFoot,pawY,z]} scale={[.34*pawScale,.115,.245*pawScale]} castShadow>
+      <mesh position={[x+backward+forwardFoot,pawY,z]} scale={[.34*pawScale,.115*thickness,.245*pawScale]} castShadow>
         <sphereGeometry args={[1,22,14]} />
         <meshStandardMaterial {...coatProps} />
       </mesh>
@@ -106,6 +109,10 @@ function Whiskers({x,y,z,side}:{x:number;y:number;z:number;side:1|-1}) {
 
 export function CatModel3D({animal}:{animal:Individual}) {
   const root=useRef<Group>(null)
+  const tailRoot=useRef<Group>(null)
+  const leftScapula=useRef<THREE.Mesh>(null)
+  const rightScapula=useRef<THREE.Mesh>(null)
+
   const model=useMemo(()=>phenotypeToCatModel(animal),[animal])
   const landmarks=useMemo(()=>felineLandmarks(model),[model])
   const coatTexture=useMemo(()=>createCoatTexture(animal),[
@@ -119,38 +126,71 @@ export function CatModel3D({animal}:{animal:Individual}) {
   ])
   const roughness=coatRoughness(animal)
 
-  const coreGeometry=useMemo(()=>createFelineCoreGeometry(model),[model])
+  const skinnedCore=useMemo(()=>{
+    const geometry=createFelineCoreGeometry(model)
+    const material=new THREE.MeshStandardMaterial({
+      map:coatTexture ?? undefined,
+      color:coatTexture?'white':animal.phenotype.coatHex,
+      roughness,
+      metalness:0,
+      skinning:true,
+    })
+    const mesh=new THREE.SkinnedMesh(geometry,material)
+    const rig=createFelineRig(model)
+    mesh.add(rig.pelvis)
+    mesh.bind(rig.skeleton)
+    mesh.normalizeSkinWeights()
+    mesh.castShadow=true
+    mesh.receiveShadow=true
+    return {mesh,geometry,material,rig}
+  },[model,coatTexture,animal.phenotype.coatHex,roughness])
+
+  useEffect(()=>()=> {
+    skinnedCore.geometry.dispose()
+    skinnedCore.material.dispose()
+    skinnedCore.rig.skeleton.dispose()
+  },[skinnedCore])
+
   const leftEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
   const rightEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
 
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
-  useEffect(()=>()=>{ coreGeometry.dispose() },[coreGeometry])
   useEffect(()=>()=>{ leftEar.dispose(); rightEar.dispose() },[leftEar,rightEar])
-
-  useFrame(({clock})=>{
-    if (!root.current) return
-    const breath=1+Math.sin(clock.elapsedTime*1.55)*.0045
-    root.current.scale.y=breath
-  })
 
   const {bodyY,shoulderX,hipX,headX,headY,muzzleX}=landmarks
   const legZ=model.bodyWidth*.63
+  const tailStart=-model.bodyLength*.54
 
   const tailGeometry=useMemo(()=>{
-    const start=-model.bodyLength*.54
     const reach=1.62*model.tailScale
     const points=[
-      new THREE.Vector3(start,bodyY+.17,0),
-      new THREE.Vector3(start-.35*reach,bodyY+.11,.02),
-      new THREE.Vector3(start-.73*reach,bodyY+.32,.04),
-      new THREE.Vector3(start-1.00*reach,bodyY+.68,.03),
-      new THREE.Vector3(start-.94*reach,bodyY+1.02,.01),
+      new THREE.Vector3(0,0,0),
+      new THREE.Vector3(-.35*reach,-.06,.02),
+      new THREE.Vector3(-.73*reach,.15,.04),
+      new THREE.Vector3(-1.00*reach,.51,.03),
+      new THREE.Vector3(-.94*reach,.85,.01),
     ]
     const radius=.068+model.bodyWidth*.018+animal.phenotype.furLength*.025
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),36,radius,10,false)
-  },[model.bodyLength,model.tailScale,model.bodyWidth,bodyY,animal.phenotype.furLength])
+  },[model.tailScale,model.bodyWidth,animal.phenotype.furLength])
 
   useEffect(()=>()=>tailGeometry.dispose(),[tailGeometry])
+
+  useFrame(({clock})=>{
+    const t=clock.elapsedTime
+    animateFelineRig(skinnedCore.rig,t,animal.seed)
+
+    if (root.current) {
+      root.current.scale.y=1+Math.sin(t*1.45+(animal.seed%127))*.0025
+    }
+    if (tailRoot.current) {
+      tailRoot.current.rotation.y=Math.sin(t*.62+(animal.seed%41))*.075
+      tailRoot.current.rotation.z=Math.sin(t*.48+(animal.seed%67))*.035
+    }
+    const scapulaShift=Math.sin(t*1.45+(animal.seed%23))*.018
+    if (leftScapula.current) leftScapula.current.position.x=shoulderX-.02+scapulaShift
+    if (rightScapula.current) rightScapula.current.position.x=shoulderX-.02-scapulaShift
+  })
 
   const coatProps={
     map:coatTexture ?? undefined,
@@ -167,17 +207,13 @@ export function CatModel3D({animal}:{animal:Individual}) {
   return (
     <group scale={model.overallScale}>
       <group ref={root}>
-        <mesh geometry={coreGeometry} castShadow receiveShadow>
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
+        <primitive object={skinnedCore.mesh} />
 
-        {/* Shoulder blades add the mobile feline shoulder silhouette without
-            breaking the continuity of the main body surface. */}
-        <mesh position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.36,.15,.23]} castShadow>
+        <mesh ref={leftScapula} position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.36*model.limbThickness,.15,.23]} castShadow>
           <sphereGeometry args={[1,22,14]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
-        <mesh position={[shoulderX-.02,bodyY+.42,-legZ*.72]} rotation={[0,-.05,-.28]} scale={[.36,.15,.23]} castShadow>
+        <mesh ref={rightScapula} position={[shoulderX-.02,bodyY+.42,-legZ*.72]} rotation={[0,-.05,-.28]} scale={[.36*model.limbThickness,.15,.23]} castShadow>
           <sphereGeometry args={[1,22,14]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
@@ -205,14 +241,16 @@ export function CatModel3D({animal}:{animal:Individual}) {
         <Whiskers x={muzzleX+.10} y={headY-.11} z={.18} side={1} />
         <Whiskers x={muzzleX+.10} y={headY-.11} z={-.18} side={-1} />
 
-        <FelineLeg x={shoulderX+.03} z={legZ} length={model.legLength} pawScale={model.pawScale} coatTexture={coatTexture} roughness={roughness} />
-        <FelineLeg x={shoulderX+.03} z={-legZ} length={model.legLength} pawScale={model.pawScale} coatTexture={coatTexture} roughness={roughness} />
-        <FelineLeg x={hipX} z={legZ} length={model.legLength*.98} pawScale={model.pawScale*1.08} coatTexture={coatTexture} roughness={roughness} hind />
-        <FelineLeg x={hipX} z={-legZ} length={model.legLength*.98} pawScale={model.pawScale*1.08} coatTexture={coatTexture} roughness={roughness} hind />
+        <FelineLeg x={shoulderX+.03} z={legZ} length={model.legLength} pawScale={model.pawScale} thickness={model.limbThickness} coatTexture={coatTexture} roughness={roughness} />
+        <FelineLeg x={shoulderX+.03} z={-legZ} length={model.legLength} pawScale={model.pawScale} thickness={model.limbThickness} coatTexture={coatTexture} roughness={roughness} />
+        <FelineLeg x={hipX} z={legZ} length={model.legLength*.98} pawScale={model.pawScale*1.08} thickness={model.limbThickness*1.06} coatTexture={coatTexture} roughness={roughness} hind />
+        <FelineLeg x={hipX} z={-legZ} length={model.legLength*.98} pawScale={model.pawScale*1.08} thickness={model.limbThickness*1.06} coatTexture={coatTexture} roughness={roughness} hind />
 
-        <mesh geometry={tailGeometry} castShadow>
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
+        <group ref={tailRoot} position={[tailStart,bodyY+.17,0]}>
+          <mesh geometry={tailGeometry} castShadow>
+            <meshStandardMaterial {...coatProps} />
+          </mesh>
+        </group>
       </group>
     </group>
   )
