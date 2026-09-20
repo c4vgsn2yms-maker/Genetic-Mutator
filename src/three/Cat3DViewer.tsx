@@ -30,7 +30,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
   if (!webgl) {
     return (
       <div className="viewer-3d-fallback">
-        <div className="render-status unavailable">3D BUILD 5.1 · WebGL unavailable</div>
+        <div className="render-status unavailable">3D BUILD 5.2 · WebGL unavailable</div>
         <CatPreview animal={animal} />
         <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. If hardware acceleration is disabled, enabling it may allow the 3D model to load.</p>
       </div>
@@ -39,7 +39,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
 
   return (
     <div className="viewer-3d-shell">
-      <div className="render-status active">3D BUILD 5.1 · habitat + anatomy rig</div>
+      <div className="render-status active">3D BUILD 5.2 · two-sided mesh + daylight habitat</div>
       <div className="gait-controls" aria-label="3D animation preview">
         {GAITS.map(name=>(
           <button key={name} className={gait===name?'active':''} onClick={()=>setGait(name)}>
@@ -56,18 +56,18 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
         camera={{position:[5.5,3.0,5.2],fov:34,near:.1,far:100}}
         gl={{antialias:true,alpha:true}}
       >
-        <color attach="background" args={['#18201c']} />
-        <fog attach="fog" args={['#18201c',8.5,17]} />
-        <ambientLight intensity={.52} />
-        <hemisphereLight intensity={1.05} groundColor="#211f19" color="#dfe9df" />
+        <color attach="background" args={['#b7c3ad']} />
+        <fog attach="fog" args={['#b7c3ad',9,18]} />
+        <ambientLight intensity={.74} />
+        <hemisphereLight intensity={1.18} groundColor="#746b55" color="#eef4e8" />
         <directionalLight
           position={[4.5,7,5]}
-          intensity={2.1}
+          intensity={1.65}
           castShadow
           shadow-mapSize-width={512}
           shadow-mapSize-height={512}
         />
-        <directionalLight position={[-5,3,-4]} intensity={.72} color="#8fa6c5" />
+        <directionalLight position={[-5,3,-4]} intensity={.58} color="#c8d7d9" />
 
         <CatEnvironment />
 
