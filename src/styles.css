@@ -109,3 +109,34 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
 .render-status.active { background:rgba(25,71,54,.76); color:#bde8d4; }
 .render-status.unavailable { position:relative; display:inline-block; top:auto; left:auto; margin:2px 4px 8px; background:rgba(96,46,32,.72); color:#f0c0aa; }
 .viewer-3d-fallback { position:relative; }
+
+.gait-controls {
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:5;
+  display:flex;
+  gap:5px;
+  padding:4px;
+  border-radius:10px;
+  background:rgba(7,10,13,.72);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(7px);
+}
+.gait-controls button {
+  border:1px solid transparent;
+  border-radius:7px;
+  background:transparent;
+  color:#a3adb8;
+  padding:6px 8px;
+  font-size:.68rem;
+  font-weight:800;
+}
+.gait-controls button.active {
+  background:#a8d2bf;
+  color:#0b1210;
+}
+@media (max-width: 560px) {
+  .gait-controls { top:44px; right:8px; }
+  .gait-controls button { padding:5px 6px; font-size:.62rem; }
+}
