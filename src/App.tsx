@@ -277,7 +277,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.4 founder genome editor + environmental natural selection</small>
+                <small>Phase 7.4.1 visible eyes + pigment epistasis fix</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
@@ -457,7 +457,7 @@ export function App() {
                 </select>
               </label>
 
-              <p className="helper">These controls seed inherited genes, not permanent presets. Descendants recombine and mutate them. Multiple coat mutations can coexist genetically; phenotype priority still determines what is visible.</p>
+              <p className="helper">These controls seed inherited genes, not permanent presets. Descendants recombine and mutate them. Multiple pigment alleles can coexist genetically, but expression follows epistasis: albinism masks melanism and other melanin-dependent coat effects even though those alleles can still be inherited by descendants.</p>
               <button className="secondary wide" type="submit">Add customized founder</button>
             </form>
           </section>
