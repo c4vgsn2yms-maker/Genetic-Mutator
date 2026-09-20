@@ -140,3 +140,13 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
   .gait-controls { top:44px; right:8px; }
   .gait-controls button { padding:5px 6px; font-size:.62rem; }
 }
+
+.skeleton-button {
+  border-left:1px solid rgba(255,255,255,.10) !important;
+  margin-left:2px;
+}
+.viewer-3d-shell {
+  background:
+    radial-gradient(circle at 50% 72%, rgba(111,105,77,.10), transparent 34%),
+    linear-gradient(#18201c,#101511);
+}
