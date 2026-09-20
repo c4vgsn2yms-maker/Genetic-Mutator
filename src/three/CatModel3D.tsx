@@ -14,6 +14,7 @@ interface CoatProps {
   color: string
   roughness: number
   metalness: number
+  side: THREE.Side
 }
 
 function ArticulatedLeg({
@@ -214,6 +215,7 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
       color:coatTexture?'white':animal.phenotype.coatHex,
       roughness,
       metalness:0,
+      side:THREE.DoubleSide,
     })
     const mesh=new THREE.SkinnedMesh(geometry,material)
     const rig=createFelineRig(model)
@@ -279,6 +281,7 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
     color:coatTexture?'white':animal.phenotype.coatHex,
     roughness,
     metalness:0,
+    side:THREE.DoubleSide,
   }
 
   const albino=animal.phenotype.mutationLabels.includes('Albinism')
