@@ -332,3 +332,20 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
     width:auto;
   }
 }
+
+/* Phase 7.1: WildMesh is now the sole visible feline model. */
+.wildmesh-live-viewer .sketchfab-reference {
+  inset:0;
+}
+.wildmesh-live-viewer .sketchfab-reference iframe {
+  padding-top:0;
+}
+.wildmesh-live-viewer .sketchfab-credit {
+  bottom:38px;
+}
+.wildmesh-live-viewer .render-status {
+  z-index:9;
+}
+.wildmesh-live-viewer .viewer-3d-hint {
+  z-index:9;
+}
