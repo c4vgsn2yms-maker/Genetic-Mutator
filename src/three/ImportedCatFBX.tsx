@@ -51,10 +51,10 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
   // Mobile screenshots showed the generated globes sitting too deeply in
   // the sockets. Move them slightly forward/up/outward and enlarge them just
   // enough to read clearly without turning them cartoonishly oversized.
-  const eyeRadius=clamp(height*.035,.040,.078)
-  const eyeForward=height*.092
-  const eyeUp=height*.050
-  const eyeSide=height*.060
+  const eyeRadius=clamp(height*.041,.046,.086)
+  const eyeForward=height*.155
+  const eyeUp=height*.062
+  const eyeSide=height*.072
 
   const rootScale=root.getWorldScale(new THREE.Vector3())
   const scaleFix=Math.max(.0001,(rootScale.x+rootScale.y+rootScale.z)/3)
@@ -78,13 +78,15 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
     eyeGroup.scale.setScalar(localRadius)
 
     const globe=new THREE.Mesh(
-      new THREE.SphereGeometry(1,24,16),
+      new THREE.SphereGeometry(1,28,20),
       new THREE.MeshStandardMaterial({
         color:new THREE.Color(eyeColor),
-        roughness:.18,
+        roughness:.14,
         metalness:0,
+        emissive:new THREE.Color(eyeColor).multiplyScalar(.08),
       }),
     )
+    globe.scale.set(1,.88,.72)
     globe.userData.generatedEye=true
     eyeGroup.add(globe)
 
@@ -96,8 +98,8 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
         metalness:0,
       }),
     )
-    pupil.position.set(0,0,.96)
-    pupil.scale.set(.54,1,.30)
+    pupil.position.set(0,0,.73)
+    pupil.scale.set(.40,.88,.16)
     pupil.userData.generatedEye=true
     eyeGroup.add(pupil)
 
@@ -105,7 +107,7 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
       new THREE.SphereGeometry(.10,12,8),
       new THREE.MeshBasicMaterial({color:'#ffffff'}),
     )
-    glint.position.set(.20,.19,1.00)
+    glint.position.set(.18,.18,.78)
     glint.userData.generatedEye=true
     eyeGroup.add(glint)
 
@@ -207,7 +209,9 @@ export function ImportedCatFBX({
 
     const materialRole=(meshName:string,materialName:string)=>{
       const name=`${meshName} ${materialName}`.toLowerCase()
-      if (/eye|iris|cornea|pupil/.test(name)) return 'eye'
+      if (/pupil/.test(name)) return 'pupil'
+      if (/cornea/.test(name)) return 'cornea'
+      if (/eye|iris/.test(name)) return 'eye'
       if (/nose|snoutskin|muzzle_skin/.test(name)) return 'nose'
       if (/pad|pawpad|toe_pad|footpad/.test(name)) return 'pad'
       if (/inner.?ear|ear.?inner|earskin/.test(name)) return 'ear'
@@ -226,10 +230,31 @@ export function ImportedCatFBX({
         const m=mat as MeshStandardMaterial
         const role=materialRole(mesh.name,m.name || '')
         if ('color' in m && m.color) {
-          if (role==='eye') {
-            m.color.set(appearance.eyeColor)
+          if (role==='pupil') {
+            if ('map' in m) m.map=null
+            m.color.set('#050607')
             if ('roughness' in m) m.roughness=.18
             if ('metalness' in m) m.metalness=0
+            if ('emissive' in m) m.emissive.set('#000000')
+          } else if (role==='cornea') {
+            if ('map' in m) m.map=null
+            m.color.set('#f7fbff')
+            if ('roughness' in m) m.roughness=.05
+            if ('metalness' in m) m.metalness=0
+            if ('transparent' in m) m.transparent=true
+            if ('opacity' in m) m.opacity=.28
+            if ('depthWrite' in m) m.depthWrite=false
+          } else if (role==='eye') {
+            // Remove the FBX's dark baked eye texture; otherwise it multiplies
+            // the phenotype color back toward black and looks like an empty socket.
+            if ('map' in m) m.map=null
+            m.color.set(appearance.eyeColor)
+            if ('roughness' in m) m.roughness=.12
+            if ('metalness' in m) m.metalness=0
+            if ('emissive' in m) {
+              m.emissive.set(appearance.eyeColor)
+              m.emissiveIntensity=.10
+            }
           } else if (role==='nose') {
             m.color.set(appearance.noseColor)
             if ('roughness' in m) m.roughness=.38
