@@ -22,12 +22,12 @@ export interface FelineLandmarks {
 }
 
 export function felineLandmarks(model:CatModelParams):FelineLandmarks {
-  const bodyY=1.32
-  const shoulderX=model.bodyLength*.30
-  const hipX=-model.bodyLength*.30
-  const headX=model.bodyLength*.515+.22*model.headLength
-  const headY=bodyY+.19
-  const muzzleX=headX+.275+.055*model.muzzleScale
+  const bodyY=1.30
+  const shoulderX=model.bodyLength*.295
+  const hipX=-model.bodyLength*.305
+  const headX=model.bodyLength*.505+.185*model.headLength
+  const headY=bodyY+.17
+  const muzzleX=headX+.235+.045*model.muzzleScale
   return {bodyY,shoulderX,hipX,headX,headY,muzzleX}
 }
 
@@ -39,24 +39,25 @@ export function createFelineCoreGeometry(model:CatModelParams) {
   const neck=model.neckScale
   const fur=model.furInflation
 
-  // Reference-calibrated adult-cat torso: broad rib cage, visible waist,
-  // rounded pelvis/haunches and a low neck transition. This deliberately
-  // avoids the double-hump / tube silhouette of the earlier build.
+  // One continuous feline torso. Centers and radii are tuned to keep the
+  // dorsal line nearly continuous while the underside carries the visible
+  // chest depth, waist and abdominal tuck.
   const sections:CrossSection[]=[
-    {x:-L*.55,y:bodyY+.015,radiusY:H*.30*model.haunchScale,radiusZ:W*.40*model.pelvisWidth,boneA:0,boneB:0,mix:0,fur:.35},
-    {x:-L*.44,y:bodyY+.045+model.rumpLift,radiusY:H*.69*model.haunchScale,radiusZ:W*.76*model.pelvisWidth,boneA:0,boneB:0,mix:0,fur:.62},
-    {x:hipX,y:bodyY+.035+model.rumpLift*.55,radiusY:H*.82*model.haunchScale,radiusZ:W*.88*model.pelvisWidth,boneA:0,boneB:1,mix:.12,fur:.64},
-    {x:-L*.17,y:bodyY-.025,radiusY:H*.69*model.abdomenScale,radiusZ:W*.70*model.waistScale,boneA:0,boneB:1,mix:.48,fur:.38},
-    {x:-L*.04,y:bodyY-.035,radiusY:H*.66*model.abdomenScale,radiusZ:W*.67*model.waistScale,boneA:0,boneB:1,mix:.80,fur:.34},
-    {x:L*.09,y:bodyY-.018,radiusY:H*.74*model.abdomenScale,radiusZ:W*.73,boneA:1,boneB:2,mix:.24,fur:.38},
-    {x:L*.19,y:bodyY+.005,radiusY:H*.84*model.chestDepth,radiusZ:W*.82*model.chestWidth,boneA:1,boneB:2,mix:.58,fur:.48},
-    {x:shoulderX,y:bodyY+.035,radiusY:H*.90*model.chestScale*model.chestDepth,radiusZ:W*.87*model.chestWidth,boneA:1,boneB:2,mix:.84,fur:.58},
-    {x:L*.39,y:bodyY+.060,radiusY:H*.72*model.chestScale,radiusZ:W*.68*model.chestWidth,boneA:2,boneB:3,mix:.38,fur:.70},
-    {x:L*.46,y:bodyY+.105,radiusY:H*.48*neck,radiusZ:W*.46*neck,boneA:2,boneB:3,mix:.72,fur:.78},
-    {x:L*.525,y:bodyY+.145,radiusY:H*.29*neck,radiusZ:W*.30*neck,boneA:3,boneB:4,mix:.34,fur:.52},
+    {x:-L*.55,y:bodyY+.01,radiusY:H*.27*model.haunchScale,radiusZ:W*.36*model.pelvisWidth,boneA:0,boneB:0,mix:0,fur:.28},
+    {x:-L*.46,y:bodyY+.02+model.rumpLift*.35,radiusY:H*.58*model.haunchScale,radiusZ:W*.68*model.pelvisWidth,boneA:0,boneB:0,mix:0,fur:.54},
+    {x:hipX,y:bodyY+.02+model.rumpLift*.20,radiusY:H*.72*model.haunchScale,radiusZ:W*.82*model.pelvisWidth,boneA:0,boneB:1,mix:.12,fur:.58},
+    {x:-L*.22,y:bodyY+.005,radiusY:H*.66*model.abdomenScale,radiusZ:W*.73*model.waistScale,boneA:0,boneB:1,mix:.38,fur:.38},
+    {x:-L*.11,y:bodyY+.025,radiusY:H*.57*model.abdomenScale,radiusZ:W*.66*model.waistScale,boneA:0,boneB:1,mix:.65,fur:.30},
+    {x:0,y:bodyY+.035,radiusY:H*.55*model.abdomenScale,radiusZ:W*.65*model.waistScale,boneA:1,boneB:2,mix:.10,fur:.28},
+    {x:L*.10,y:bodyY+.018,radiusY:H*.66*model.abdomenScale,radiusZ:W*.72,boneA:1,boneB:2,mix:.30,fur:.34},
+    {x:L*.20,y:bodyY-.005,radiusY:H*.78*model.chestDepth,radiusZ:W*.80*model.chestWidth,boneA:1,boneB:2,mix:.58,fur:.42},
+    {x:shoulderX,y:bodyY+.005,radiusY:H*.84*model.chestScale*model.chestDepth,radiusZ:W*.84*model.chestWidth,boneA:1,boneB:2,mix:.84,fur:.48},
+    {x:L*.38,y:bodyY+.02,radiusY:H*.68*model.chestScale,radiusZ:W*.65*model.chestWidth,boneA:2,boneB:3,mix:.35,fur:.60},
+    {x:L*.45,y:bodyY+.07,radiusY:H*.47*neck,radiusZ:W*.46*neck,boneA:2,boneB:3,mix:.70,fur:.68},
+    {x:L*.51,y:bodyY+.115,radiusY:H*.29*neck,radiusZ:W*.31*neck,boneA:3,boneB:4,mix:.35,fur:.46},
   ]
 
-  const radialSegments=36
+  const radialSegments=40
   const positions:number[]=[]
   const uvs:number[]=[]
   const skinIndices:number[]=[]
@@ -73,20 +74,21 @@ export function createFelineCoreGeometry(model:CatModelParams) {
     const s=sections[i]
     const u=i/(sections.length-1)
     const furGain=1+fur*s.fur
+
     for (let j=0;j<=radialSegments;j++) {
       const v=j/radialSegments
       const angle=v*Math.PI*2
       const c=Math.cos(angle)
       const sin=Math.sin(angle)
 
-      const underside=c<0?.74:1
-      const dorsalLift=c>0?Math.pow(c,5)*s.radiusY*.028:0
-      const tuck=c<-.45?Math.pow(Math.abs(c),3)*s.radiusY*.055:0
-      const sideFlatten=1-Math.pow(Math.max(0,Math.abs(sin)-.78),2)*.08
+      const underside=c<0?.76:1
+      const dorsalLift=c>0?Math.pow(c,6)*s.radiusY*.016:0
+      const bellyTuck=c<-.35?Math.pow(Math.abs(c),2.6)*s.radiusY*.07:0
+      const sideFlatten=1-Math.pow(Math.max(0,Math.abs(sin)-.80),2)*.07
 
       positions.push(
         s.x,
-        s.y+c*s.radiusY*underside*furGain+dorsalLift+tuck,
+        s.y+c*s.radiusY*underside*furGain+dorsalLift+bellyTuck,
         sin*s.radiusZ*furGain*sideFlatten,
       )
       uvs.push(u,v)
@@ -132,11 +134,11 @@ export function createFelineCoreGeometry(model:CatModelParams) {
 }
 
 export function createCatHeadGeometry(model:CatModelParams) {
-  const geometry=new THREE.SphereGeometry(1,42,30)
+  const geometry=new THREE.SphereGeometry(1,44,32)
   const pos=geometry.attributes.position as THREE.BufferAttribute
-  const sx=.335*model.headLength
-  const sy=.315*model.skullScale
-  const sz=.345*model.skullScale
+  const sx=.285*model.headLength
+  const sy=.265*model.skullScale
+  const sz=.305*model.skullScale
 
   for (let i=0;i<pos.count;i++) {
     const x=pos.getX(i)
@@ -145,14 +147,15 @@ export function createCatHeadGeometry(model:CatModelParams) {
     const front=Math.max(0,x)
     const rear=Math.max(0,-x)
     const lower=Math.max(0,-y)
-    const cheek=1+lower*.10*model.cheekScale+front*.035
-    const temple=1-Math.max(0,y-.18)*.06
-    const frontFlatten=1-front*.08
+    const upper=Math.max(0,y)
+    const cheek=1+lower*.075*model.cheekScale+front*.025
+    const temple=1-upper*.045
+    const foreheadFlatten=1-front*.11
     pos.setXYZ(
       i,
-      x*sx*(1-rear*.05),
-      y*sy*(1+Math.max(0,y)*.025),
-      z*sz*cheek*temple*frontFlatten,
+      x*sx*(1-rear*.045),
+      y*sy*(1-upper*.035),
+      z*sz*cheek*temple*foreheadFlatten,
     )
   }
   pos.needsUpdate=true
@@ -161,18 +164,24 @@ export function createCatHeadGeometry(model:CatModelParams) {
 }
 
 export function createCatMuzzleGeometry(model:CatModelParams) {
-  const geometry=new THREE.SphereGeometry(1,34,22)
+  const geometry=new THREE.SphereGeometry(1,36,24)
   const pos=geometry.attributes.position as THREE.BufferAttribute
-  const sx=.155*model.muzzleScale
-  const sy=.105
-  const sz=.215*model.skullScale
+  const sx=.132*model.muzzleScale
+  const sy=.092
+  const sz=.192*model.skullScale
   for (let i=0;i<pos.count;i++) {
     const x=pos.getX(i)
     const y=pos.getY(i)
     const z=pos.getZ(i)
+    const front=Math.max(0,x)
     const lower=Math.max(0,-y)
-    const split=1+Math.abs(z)*.08
-    pos.setXYZ(i,x*sx,y*sy*(1-lower*.04),z*sz*split)
+    const split=1+Math.abs(z)*.065
+    pos.setXYZ(
+      i,
+      x*sx*(1-front*.06),
+      y*sy*(1-lower*.03),
+      z*sz*split,
+    )
   }
   pos.needsUpdate=true
   geometry.computeVertexNormals()
@@ -180,23 +189,23 @@ export function createCatMuzzleGeometry(model:CatModelParams) {
 }
 
 export function createSmoothTailGeometry(model:CatModelParams,furLength:number) {
-  const length=1.70*model.tailScale
-  const radius=(.067+model.bodyWidth*.012)*model.tailThickness+model.furInflation*.070
+  const length=1.68*model.tailScale
+  const radius=(.068+model.bodyWidth*.012)*model.tailThickness+model.furInflation*.065
   const points=[
-    new THREE.Vector3(0,0,0),
-    new THREE.Vector3(-length*.18,.00,.00),
-    new THREE.Vector3(-length*.40,.035,.012),
-    new THREE.Vector3(-length*.62,.10,.022),
-    new THREE.Vector3(-length*.82,.20,.020),
-    new THREE.Vector3(-length,.30,.008),
+    new THREE.Vector3(.04,.00,0),
+    new THREE.Vector3(-length*.15,.00,.00),
+    new THREE.Vector3(-length*.36,.02,.008),
+    new THREE.Vector3(-length*.58,.07,.014),
+    new THREE.Vector3(-length*.79,.15,.012),
+    new THREE.Vector3(-length,.23,.004),
   ]
   const curve=new THREE.CatmullRomCurve3(points)
-  const geometry=new THREE.TubeGeometry(curve,52,radius,12,false)
+  const geometry=new THREE.TubeGeometry(curve,56,radius,12,false)
   const pos=geometry.attributes.position as THREE.BufferAttribute
   for (let i=0;i<pos.count;i++) {
     const x=pos.getX(i)
     const t=Math.min(1,Math.max(0,Math.abs(x)/Math.max(.01,length)))
-    const taper=1-t*.45
+    const taper=1-t*.48
     const p=curve.getPoint(t)
     pos.setXYZ(i,x,p.y+(pos.getY(i)-p.y)*taper,p.z+(pos.getZ(i)-p.z)*taper)
   }
