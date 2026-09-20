@@ -8,7 +8,7 @@ const SOURCES = {
     modelName:'CAT - Realistic 3D Model',
     authorUrl:'https://sketchfab.com/WildMesh_3D',
     author:'WildMesh 3D',
-    note:'Adult anatomy reference · not genetics-driven yet',
+    note:'Live realistic cat visual · the downloadable rigged mesh is still needed for genetics-driven deformation and locomotion',
   },
   family: {
     title:'Cat Family',
@@ -17,7 +17,7 @@ const SOURCES = {
     modelName:'Cat Family',
     authorUrl:'https://sketchfab.com/billl90',
     author:'RedDeer',
-    note:'Age / family anatomy reference · useful for kitten-to-adult proportions',
+    note:'Development-only age anatomy reference',
   },
 } satisfies Record<CatReferenceSource,{
   title:string
@@ -29,10 +29,16 @@ const SOURCES = {
   note:string
 }>
 
-export function SketchfabCatReference({source}:{source:CatReferenceSource}) {
+export function SketchfabCatReference({
+  source,
+  live=false,
+}:{
+  source:CatReferenceSource
+  live?:boolean
+}) {
   const item=SOURCES[source]
   return (
-    <div className="sketchfab-reference">
+    <div className={live?'sketchfab-reference sketchfab-live-cat':'sketchfab-reference'}>
       <iframe
         title={item.title}
         src={item.src}
