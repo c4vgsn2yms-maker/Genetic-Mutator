@@ -147,6 +147,6 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
 }
 .viewer-3d-shell {
   background:
-    radial-gradient(circle at 50% 72%, rgba(151,137,96,.18), transparent 36%),
-    linear-gradient(#c0cbb7,#a8b59f);
+    radial-gradient(circle at 50% 74%, rgba(177,157,103,.22), transparent 38%),
+    linear-gradient(#d7e2cf,#bdcbb4);
 }
