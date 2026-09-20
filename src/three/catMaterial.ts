@@ -212,7 +212,7 @@ export function createCoatTexture(animal: Individual, appearance=resolveVisibleA
 
   // Fine coat-level variation keeps black/melanistic and pale coats from
   // looking like flat plastic while remaining subtle enough for mutations.
-  ctx.globalAlpha=appearance.isAlbino?.045:.09
+  ctx.globalAlpha=appearance.isAlbino ? .045 : .09
   for (let i=0;i<1500;i++) {
     ctx.fillStyle=r()>.5?'#ffffff':'#000000'
     ctx.fillRect(r()*canvas.width,r()*canvas.height,1+r()*1.4,1+r()*1.4)
