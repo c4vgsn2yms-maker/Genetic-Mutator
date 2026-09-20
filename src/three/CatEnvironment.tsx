@@ -4,7 +4,7 @@ function Rock({position,scale,rotation=0}:{position:[number,number,number];scale
   return (
     <mesh position={position} rotation={[0,rotation,0]} scale={scale} castShadow receiveShadow>
       <dodecahedronGeometry args={[1,1]} />
-      <meshStandardMaterial color="#6d685d" roughness={.98} />
+      <meshStandardMaterial color="#8b8372" roughness={.98} />
     </mesh>
   )
 }
@@ -28,22 +28,22 @@ export function CatEnvironment() {
     <group>
       <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.015,0]} receiveShadow>
         <circleGeometry args={[8,64]} />
-        <meshStandardMaterial color="#77705d" roughness={1} />
+        <meshStandardMaterial color="#948a72" roughness={1} />
       </mesh>
 
       <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.008,0]} receiveShadow>
         <circleGeometry args={[4.8,64]} />
-        <meshStandardMaterial color="#8b8067" roughness={1} />
+        <meshStandardMaterial color="#aa9a78" roughness={1} />
       </mesh>
 
       <mesh position={[0,1.95,-4.5]} receiveShadow>
         <planeGeometry args={[12,5.4]} />
-        <meshStandardMaterial color="#a8b59f" roughness={1} />
+        <meshStandardMaterial color="#c7d3be" roughness={1} />
       </mesh>
 
       <mesh position={[0,.92,-4.18]} rotation={[-.16,0,0]} receiveShadow>
         <planeGeometry args={[9.5,2.1]} />
-        <meshStandardMaterial color="#919d86" roughness={1} />
+        <meshStandardMaterial color="#b1bea6" roughness={1} />
       </mesh>
 
       <Rock position={[-3.25,.22,-1.45]} scale={[.75,.34,.55]} rotation={.4} />
@@ -59,7 +59,7 @@ export function CatEnvironment() {
 
       <mesh position={[0,.012,-2.7]} rotation={[-Math.PI/2,0,0]} receiveShadow>
         <ringGeometry args={[2.2,3.45,64]} />
-        <meshStandardMaterial color="#72785f" roughness={1} />
+        <meshStandardMaterial color="#8d9576" roughness={1} />
       </mesh>
     </group>
   )
