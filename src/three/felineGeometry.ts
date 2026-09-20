@@ -37,7 +37,6 @@ export function createFelineCoreGeometry(model: CatModelParams) {
   const L=model.bodyLength
   const H=model.bodyHeight
   const W=model.bodyWidth
-  const skull=model.skullScale
   const neck=model.neckScale
   const fur=model.furInflation
 
@@ -56,11 +55,7 @@ export function createFelineCoreGeometry(model: CatModelParams) {
     {x:L*.39,y:bodyY+.15,radiusY:H*.79*model.chestScale,radiusZ:W*.74*model.chestWidth,boneA:2,boneB:3,mix:.34,fur:.95},
     {x:L*.47,y:bodyY+.22,radiusY:H*.58*neck,radiusZ:W*.57*neck,boneA:2,boneB:3,mix:.72,fur:1.05},
     {x:L*.535,y:bodyY+.29,radiusY:H*.43*neck,radiusZ:W*.44*neck,boneA:3,boneB:4,mix:.20,fur:.82},
-    {x:headX-.20*model.headLength,y:headY-.015,radiusY:.38*skull,radiusZ:.37*skull,boneA:3,boneB:4,mix:.70,fur:.35,face:true},
-    {x:headX+.015,y:headY+.045,radiusY:.46*skull,radiusZ:.44*skull,boneA:4,boneB:4,mix:0,fur:.25,face:true},
-    {x:headX+.235*model.headLength,y:headY+.005,radiusY:.34*skull,radiusZ:.36*skull,boneA:4,boneB:4,mix:0,fur:.18,face:true},
-    {x:muzzleX-.095,y:headY-.105,radiusY:.215*model.muzzleScale,radiusZ:.245*skull*model.cheekScale,boneA:4,boneB:4,mix:0,fur:.05,face:true},
-    {x:muzzleX+.175*model.muzzleScale,y:headY-.12,radiusY:.115*model.muzzleScale,radiusZ:.145*skull,boneA:4,boneB:4,mix:0,fur:0,face:true},
+    {x:L*.59,y:bodyY+.33,radiusY:H*.31*neck,radiusZ:W*.33*neck,boneA:3,boneB:4,mix:.55,fur:.55},
   ]
 
   const radialSegments=34
@@ -138,6 +133,83 @@ export function createFelineCoreGeometry(model: CatModelParams) {
   geometry.setIndex(indices)
   geometry.computeVertexNormals()
   geometry.computeBoundingSphere()
+  return geometry
+}
+
+export function createCatHeadGeometry(model: CatModelParams) {
+  const geometry=new THREE.SphereGeometry(1,40,28)
+  const pos=geometry.attributes.position as THREE.BufferAttribute
+  const sx=.46*model.headLength
+  const sy=.43*model.skullScale
+  const sz=.45*model.skullScale
+
+  for (let i=0;i<pos.count;i++) {
+    const x=pos.getX(i)
+    const y=pos.getY(i)
+    const z=pos.getZ(i)
+    const front=Math.max(0,x)
+    const rear=Math.max(0,-x)
+    const cheek=1+Math.max(0,.25-Math.abs(y))*.16*model.cheekScale
+    const faceNarrow=1-front*.15
+    const crown=1+Math.max(0,y)*.045
+    pos.setXYZ(
+      i,
+      x*sx*(1-rear*.04),
+      y*sy*crown,
+      z*sz*faceNarrow*cheek,
+    )
+  }
+  pos.needsUpdate=true
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+export function createCatMuzzleGeometry(model: CatModelParams) {
+  const geometry=new THREE.SphereGeometry(1,30,20)
+  const pos=geometry.attributes.position as THREE.BufferAttribute
+  const sx=.25*model.muzzleScale
+  const sy=.145
+  const sz=.255*model.skullScale
+  for (let i=0;i<pos.count;i++) {
+    const x=pos.getX(i)
+    const y=pos.getY(i)
+    const z=pos.getZ(i)
+    const front=Math.max(0,x)
+    const taper=1-front*.14
+    pos.setXYZ(i,x*sx,y*sy,z*sz*taper)
+  }
+  pos.needsUpdate=true
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+export function createSmoothTailGeometry(model: CatModelParams,furLength:number) {
+  const length=1.72*model.tailScale
+  const radius=(.060+model.bodyWidth*.014)*model.tailThickness + model.furInflation*.085
+  const points=[
+    new THREE.Vector3(0,0,0),
+    new THREE.Vector3(-length*.20,.015,.01),
+    new THREE.Vector3(-length*.42,.08,.025),
+    new THREE.Vector3(-length*.64,.20,.04),
+    new THREE.Vector3(-length*.82,.38,.035),
+    new THREE.Vector3(-length,.56,.015),
+  ]
+  const curve=new THREE.CatmullRomCurve3(points)
+  const geometry=new THREE.TubeGeometry(curve,48,radius,10,false)
+  const pos=geometry.attributes.position as THREE.BufferAttribute
+  // Subtle distal taper without breaking continuity.
+  for (let i=0;i<pos.count;i++) {
+    const x=pos.getX(i)
+    const t=Math.min(1,Math.max(0,Math.abs(x)/Math.max(.01,length)))
+    const taper=1-t*.32
+    const y=pos.getY(i)
+    const z=pos.getZ(i)
+    const centerY=curve.getPoint(t).y
+    const centerZ=curve.getPoint(t).z
+    pos.setXYZ(i,x,centerY+(y-centerY)*taper,centerZ+(z-centerZ)*taper)
+  }
+  pos.needsUpdate=true
+  geometry.computeVertexNormals()
   return geometry
 }
 
