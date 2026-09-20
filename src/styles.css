@@ -22,7 +22,7 @@ button { cursor: pointer; }
 .segmented button,.ghost { border:0; border-radius:8px; color:#aab4c0; background:transparent; padding:9px 13px; }
 .segmented button.active { color:#0b0e12; background:#a8d2bf; font-weight:800; }
 .ghost { border:1px solid #2c343d; }
-.stat-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1px; overflow:hidden; border:1px solid #252c34; border-radius:14px; margin-bottom:18px; background:#252c34; }
+.stat-strip { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:1px; overflow:hidden; border:1px solid #252c34; border-radius:14px; margin-bottom:18px; background:#252c34; }
 .stat-strip div { background:#11161c; padding:15px 17px; display:flex; flex-direction:column; gap:4px; min-width:0; }
 .stat-strip span,.animal-facts span { color:#7f8a97; font-size:.76rem; text-transform:uppercase; letter-spacing:.07em; }
 .stat-strip strong { font-size:1.08rem; overflow-wrap:anywhere; }
@@ -395,4 +395,28 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
     white-space:normal;
     text-align:center;
   }
+}
+
+/* Phase 7.4 founder customization + environmental selection */
+.tag.adaptation { color:#b9dca8; border-color:#3d5740; background:#18231a; }
+.mutation-selector { margin:4px 0 14px; display:grid; gap:7px; }
+.mutation-selector > span { color:#b7c0ca; font-size:.82rem; font-weight:700; }
+.mutation-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.mutation-grid button {
+  border:1px solid #35414d;
+  border-radius:9px;
+  background:#151a20;
+  color:#aeb8c2;
+  padding:9px 8px;
+  font-weight:750;
+}
+.mutation-grid button.active {
+  background:#5e4438;
+  border-color:#9d705a;
+  color:#ffd2bd;
+}
+.trait-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+.environment-panel { border-color:#304139; }
+@media (max-width:560px) {
+  .trait-editor-grid,.mutation-grid { grid-template-columns:1fr; }
 }
