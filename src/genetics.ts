@@ -280,26 +280,34 @@ export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'s
   let whiteFraction = 0
 
   const mutations: string[] = []
-  if (melanism) {
-    mutations.push('Melanism')
-    coatName = 'melanistic ' + coatName
-    coatHex = '#17191b'
-    patternHex = '#090a0b'
-  }
+
+  // Pigmentation epistasis:
+  // Albinism prevents normal melanin expression, so a cat can genetically
+  // carry melanism (and other pigment loci) without visibly expressing them.
+  // Visible mutation labels describe phenotype, not every carried allele.
   if (albinism) {
     mutations.push('Albinism')
     coatName = 'albino'
     coatHex = '#f1e7dc'
     patternHex = '#ead9d2'
-  } else if (leucism) {
-    mutations.push('Leucism')
-    coatName = 'leucistic ' + coatName
-    whiteFraction = Math.max(whiteFraction, .72)
-  }
-  if (piebald) {
-    mutations.push('Piebald')
-    if (!albinism) coatName = 'piebald ' + coatName
-    whiteFraction = Math.max(whiteFraction, .18 + .65 * avg(g.piebald))
+    whiteFraction = 0
+  } else {
+    if (leucism) {
+      mutations.push('Leucism')
+      coatName = 'leucistic ' + coatName
+      whiteFraction = Math.max(whiteFraction, .72)
+    } else if (melanism) {
+      mutations.push('Melanism')
+      coatName = 'melanistic ' + coatName
+      coatHex = '#17191b'
+      patternHex = '#090a0b'
+    }
+
+    if (piebald) {
+      mutations.push('Piebald')
+      coatName = 'piebald ' + coatName
+      whiteFraction = Math.max(whiteFraction, .18 + .65 * avg(g.piebald))
+    }
   }
 
   const r = rngFromSeed(String(individual.seed))
