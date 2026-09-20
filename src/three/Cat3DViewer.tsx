@@ -6,8 +6,9 @@ import type { Individual } from '../types'
 import { CatPreview } from '../CatPreview'
 import { CatModel3D } from './CatModel3D'
 import { CatEnvironment } from './CatEnvironment'
-import { SketchfabCatReference } from './SketchfabCatReference'
+import { SketchfabCatReference, type CatReferenceSource } from './SketchfabCatReference'
 import type { FelineGait } from './felineGait'
+import type { CatAgeStage } from './catAgeMorph'
 
 function supportsWebGL() {
   try {
@@ -23,12 +24,15 @@ function supportsWebGL() {
 }
 
 const GAITS:FelineGait[]=['idle','walk','trot','run','rest']
+const AGES:CatAgeStage[]=['kitten','juvenile','adult','senior']
 
 export function Cat3DViewer({animal}:{animal:Individual}) {
   const webgl=useMemo(()=>supportsWebGL(),[])
   const [gait,setGait]=useState<FelineGait>('idle')
   const [showSkeleton,setShowSkeleton]=useState(false)
   const [viewMode,setViewMode]=useState<'genetic'|'reference'>('genetic')
+  const [ageStage,setAgeStage]=useState<CatAgeStage>('adult')
+  const [referenceSource,setReferenceSource]=useState<CatReferenceSource>('realistic-adult')
 
   if (viewMode==='genetic' && !webgl) {
     return (
@@ -37,7 +41,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
           <button className="active" onClick={()=>setViewMode('genetic')}>Genetic Model</button>
           <button onClick={()=>setViewMode('reference')}>Realistic Reference</button>
         </div>
-        <div className="render-status unavailable">3D BUILD 6.2 · WebGL unavailable</div>
+        <div className="render-status unavailable">3D BUILD 6.3 · WebGL unavailable</div>
         <CatPreview animal={animal} />
         <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. You can still switch to Realistic Reference to view the Sketchfab model.</p>
       </div>
@@ -46,11 +50,30 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
 
   return (
     <div className="viewer-3d-shell">
-      <div className="render-status active">3D BUILD 6.2 · realistic reference + genetic model</div>
+      <div className="render-status active">3D BUILD 6.3 · age morphs + two anatomy references</div>
       <div className="model-source-tabs" aria-label="3D model source">
         <button className={viewMode==='genetic'?'active':''} onClick={()=>setViewMode('genetic')}>Genetic Model</button>
         <button className={viewMode==='reference'?'active':''} onClick={()=>setViewMode('reference')}>Realistic Reference</button>
       </div>
+      {viewMode==='genetic' && (
+        <div className="age-controls" aria-label="Age preview">
+          {AGES.map(stage=>(
+            <button key={stage} className={ageStage===stage?'active':''} onClick={()=>setAgeStage(stage)}>
+              {stage[0].toUpperCase()+stage.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+      {viewMode==='reference' && (
+        <div className="reference-source-controls" aria-label="Reference model">
+          <button className={referenceSource==='realistic-adult'?'active':''} onClick={()=>setReferenceSource('realistic-adult')}>
+            Adult Ref
+          </button>
+          <button className={referenceSource==='family'?'active':''} onClick={()=>setReferenceSource('family')}>
+            Cat Family
+          </button>
+        </div>
+      )}
       {viewMode==='genetic' && <div className="gait-controls" aria-label="3D animation preview">
         {GAITS.map(name=>(
           <button key={name} className={gait===name?'active':''} onClick={()=>setGait(name)}>
@@ -62,7 +85,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
         </button>
       </div>}
       {viewMode==='reference' ? (
-        <SketchfabCatReference />
+        <SketchfabCatReference source={referenceSource} />
       ) : (
       <Canvas
         shadows
@@ -101,7 +124,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
         <CatEnvironment />
 
         <Bounds fit clip observe margin={1.25}>
-          <CatModel3D animal={animal} gait={gait} showSkeleton={showSkeleton} />
+          <CatModel3D animal={animal} gait={gait} showSkeleton={showSkeleton} ageStage={ageStage} />
         </Bounds>
 
         <ContactShadows position={[0,.015,0]} opacity={.30} scale={8} blur={3.2} far={5.5} />
@@ -119,8 +142,10 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
       )}
       <div className="viewer-3d-hint">
         {viewMode==='reference'
-          ? 'Realistic anatomy reference from Sketchfab · this model is not connected to genetics yet'
-          : 'Drag to rotate · zoom · choose Rest to inspect the resting pose · Skeleton shows the internal armature'}
+          ? (referenceSource==='family'
+              ? 'Cat Family age reference from Sketchfab · use it to compare kitten and adult proportions'
+              : 'Adult realistic anatomy reference from Sketchfab · this model is not connected to genetics yet')
+          : `Age preview: ${ageStage} · drag to rotate · zoom · gait and skeleton controls remain available`}
       </div>
     </div>
   )
