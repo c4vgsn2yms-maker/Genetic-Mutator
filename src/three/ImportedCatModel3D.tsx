@@ -257,7 +257,9 @@ export function ImportedCatModel3D({
       ?? entries.find(([name])=>gait==='idle' && name.toLowerCase().includes('idle'))
       ?? entries[0]
     chosen?.[1]?.reset().fadeIn(.12).play()
-    return ()=>chosen?.[1]?.fadeOut(.12)
+    return ()=>{
+      chosen?.[1]?.fadeOut(.12)
+    }
   },[actions,gait])
 
   useFrame(({clock})=>{
