@@ -48,10 +48,13 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
   const up=new THREE.Vector3(0,1,0)
   const lateral=new THREE.Vector3().crossVectors(up,forward).normalize()
   const height=Math.max(.5,size.y)
-  const eyeRadius=clamp(height*.032,.035,.070)
-  const eyeForward=height*.072
-  const eyeUp=height*.040
-  const eyeSide=height*.052
+  // Mobile screenshots showed the generated globes sitting too deeply in
+  // the sockets. Move them slightly forward/up/outward and enlarge them just
+  // enough to read clearly without turning them cartoonishly oversized.
+  const eyeRadius=clamp(height*.035,.040,.078)
+  const eyeForward=height*.092
+  const eyeUp=height*.050
+  const eyeSide=height*.060
 
   const rootScale=root.getWorldScale(new THREE.Vector3())
   const scaleFix=Math.max(.0001,(rootScale.x+rootScale.y+rootScale.z)/3)
@@ -93,8 +96,8 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
         metalness:0,
       }),
     )
-    pupil.position.set(0,0,.91)
-    pupil.scale.set(.52,1,.28)
+    pupil.position.set(0,0,.96)
+    pupil.scale.set(.54,1,.30)
     pupil.userData.generatedEye=true
     eyeGroup.add(pupil)
 
@@ -102,7 +105,7 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
       new THREE.SphereGeometry(.10,12,8),
       new THREE.MeshBasicMaterial({color:'#ffffff'}),
     )
-    glint.position.set(.18,.18,.96)
+    glint.position.set(.20,.19,1.00)
     glint.userData.generatedEye=true
     eyeGroup.add(glint)
 
