@@ -216,3 +216,47 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
   .model-source-tabs button { padding:5px 6px; font-size:.61rem; }
   .sketchfab-credit { flex-direction:column; bottom:36px; }
 }
+
+.age-controls,
+.reference-source-controls {
+  position:absolute;
+  left:10px;
+  top:84px;
+  z-index:6;
+  display:flex;
+  gap:5px;
+  padding:4px;
+  border-radius:10px;
+  background:rgba(7,10,13,.76);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(7px);
+}
+.age-controls button,
+.reference-source-controls button {
+  border:1px solid transparent;
+  border-radius:7px;
+  background:transparent;
+  color:#a3adb8;
+  padding:6px 8px;
+  font-size:.65rem;
+  font-weight:800;
+}
+.age-controls button.active,
+.reference-source-controls button.active {
+  background:#d8c98e;
+  color:#17130a;
+}
+@media (max-width:560px) {
+  .age-controls,
+  .reference-source-controls {
+    top:80px;
+    left:8px;
+    max-width:calc(100% - 16px);
+    flex-wrap:wrap;
+  }
+  .age-controls button,
+  .reference-source-controls button {
+    padding:5px 6px;
+    font-size:.59rem;
+  }
+}
