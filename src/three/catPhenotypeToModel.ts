@@ -34,54 +34,53 @@ const clamp = (v:number,min:number,max:number) => Math.max(min,Math.min(max,v))
 const avg = (pair: GenePair) => (pair[0]+pair[1])/2
 
 export function phenotypeToCatModel(animal: Individual): CatModelParams {
-  const p = animal.phenotype
-  const boneMass = clamp(avg(animal.genome.boneMass),0,1)
-  const muscleMass = clamp(avg(animal.genome.muscleMass),0,1)
-  const furGene = clamp(p.furLength,0,1)
+  const p=animal.phenotype
+  const boneMass=clamp(avg(animal.genome.boneMass),0,1)
+  const muscleMass=clamp(avg(animal.genome.muscleMass),0,1)
+  const furGene=clamp(p.furLength,0,1)
 
-  // Expected mass uses structural length and height so a heavy, short cat
-  // looks stockier while a similarly heavy long/tall cat stays athletic.
-  const sizeVolume = Math.max(.45,(p.bodyLengthCm/58) * Math.pow(p.shoulderCm/30,.72))
-  const expectedWeight = Math.max(2.8,5.6*sizeVolume)
-  const massRatio = clamp(p.weightKg/expectedWeight,.45,2.2)
-  const bodyCondition = clamp(.92+(massRatio-1)*.34,.72,1.30)
+  const sizeVolume=Math.max(.45,(p.bodyLengthCm/58)*Math.pow(p.shoulderCm/30,.72))
+  const expectedWeight=Math.max(2.8,5.6*sizeVolume)
+  const massRatio=clamp(p.weightKg/expectedWeight,.45,2.2)
+  const bodyCondition=clamp(.94+(massRatio-1)*.28,.76,1.24)
 
-  // Renderer guards preserve a feline silhouette even when the simulator
-  // produces extreme genetics. They do not alter the stored genome.
-  const overallScale = clamp(.84 + Math.log2(Math.max(.35,p.shoulderCm / 30)) * .27,.60,2.75)
-  const bodyLength = clamp(2.50 * Math.sqrt(Math.max(.38,p.bodyLengthCm / 58)),1.82,4.20)
-  const bodyHeight = clamp(.66 * Math.pow(massRatio,.14) * (.95+muscleMass*.11),.50,1.08)
-  const bodyWidth = clamp(.58 * Math.pow(massRatio,.16) * (.94+boneMass*.08+muscleMass*.08),.43,1.12)
-  const legLength = clamp(1.12 * (p.legRatio / .60) * Math.sqrt(Math.max(.42,p.shoulderCm / 30)),.70,1.82)
-  const limbThickness = clamp(.76 + boneMass*.25 + muscleMass*.18 + (bodyCondition-.92)*.12,.76,1.26)
-  const furInflation = clamp(furGene*.16,0,.16)
+  // Reference-calibrated feline baseline. Genetics are allowed to vary this
+  // baseline, but the renderer keeps the result inside recognizably feline
+  // proportions instead of scaling every body part independently.
+  const overallScale=clamp(.86+Math.log2(Math.max(.35,p.shoulderCm/30))*.25,.62,2.65)
+  const bodyLength=clamp(2.34*Math.sqrt(Math.max(.42,p.bodyLengthCm/58)),1.85,3.85)
+  const bodyHeight=clamp(.54*Math.pow(massRatio,.12)*(.97+muscleMass*.08),.46,.82)
+  const bodyWidth=clamp(.49*Math.pow(massRatio,.14)*(.96+boneMass*.06+muscleMass*.06),.40,.78)
+  const legLength=clamp(1.08*(p.legRatio/.60)*Math.sqrt(Math.max(.46,p.shoulderCm/30)),.78,1.55)
+  const limbThickness=clamp(.90+boneMass*.22+muscleMass*.18+(bodyCondition-.94)*.10,.88,1.28)
+  const furInflation=clamp(furGene*.115,0,.115)
 
   return {
     overallScale,
     bodyLength,
     bodyHeight,
     bodyWidth,
-    chestScale: clamp(.93 + muscleMass*.16 + boneMass*.04 + (bodyCondition-.92)*.08,.92,1.28),
-    chestDepth: clamp(.97 + muscleMass*.12 + (bodyCondition-.92)*.07,.94,1.22),
-    abdomenScale: clamp(.82 + bodyCondition*.16,.90,1.08),
-    waistScale: clamp(.73 + bodyCondition*.14 + boneMass*.035,.80,1.00),
-    haunchScale: clamp(.94 + muscleMass*.20 + boneMass*.04 + (bodyCondition-.92)*.05,.94,1.30),
-    rumpLift: clamp(.035 + muscleMass*.055,.035,.09),
+    chestScale:clamp(.98+muscleMass*.10+boneMass*.025+(bodyCondition-.94)*.05,.96,1.18),
+    chestDepth:clamp(.98+muscleMass*.08+(bodyCondition-.94)*.05,.96,1.16),
+    abdomenScale:clamp(.88+bodyCondition*.10,.94,1.06),
+    waistScale:clamp(.76+bodyCondition*.12+boneMass*.025,.84,.96),
+    haunchScale:clamp(.98+muscleMass*.14+boneMass*.03+(bodyCondition-.94)*.04,.98,1.20),
+    rumpLift:clamp(.018+muscleMass*.030,.018,.050),
     legLength,
     limbThickness,
-    pawScale: clamp(.76 + boneMass*.16 + Math.sqrt(massRatio)*.045,.78,1.16),
-    skullScale: clamp(p.skullWidth * (.94+boneMass*.08),.78,1.42),
-    headLength: clamp(.92 + avg(animal.genome.skullWidth)*.08 + avg(animal.genome.muzzleLength)*.04,.92,1.06),
-    muzzleScale: clamp(.82 + (p.muzzleLength-1)*.62,.72,1.16),
-    cheekScale: clamp(.92 + boneMass*.10 + muscleMass*.05,.92,1.08),
-    earScale: clamp(1.08 - furGene*.07 - boneMass*.025,.88,1.14),
-    neckScale: clamp(.86 + muscleMass*.24 + (bodyCondition-.92)*.08,.86,1.34),
-    tailScale: clamp((p.tailLengthCm / Math.max(1,p.bodyLengthCm)) / .68,.60,1.68),
-    tailThickness: clamp(.92 + boneMass*.08 + furGene*.20,.92,1.20),
+    pawScale:clamp(.70+boneMass*.13+Math.sqrt(massRatio)*.035,.72,1.02),
+    skullScale:clamp(.88+(p.skullWidth-1)*.58+boneMass*.035,.78,1.18),
+    headLength:clamp(.90+avg(animal.genome.muzzleLength)*.035+avg(animal.genome.skullWidth)*.025,.90,.98),
+    muzzleScale:clamp(.78+(p.muzzleLength-1)*.48,.68,1.05),
+    cheekScale:clamp(.96+boneMass*.06+muscleMass*.035,.96,1.06),
+    earScale:clamp(.92-furGene*.035-boneMass*.015,.80,1.02),
+    neckScale:clamp(.90+muscleMass*.16+(bodyCondition-.94)*.05,.88,1.16),
+    tailScale:clamp((p.tailLengthCm/Math.max(1,p.bodyLengthCm))/.68,.65,1.52),
+    tailThickness:clamp(.96+boneMass*.06+furGene*.14,.94,1.15),
     boneMass,
     muscleMass,
-    chestWidth: clamp(.93 + boneMass*.07 + muscleMass*.10,.93,1.16),
-    pelvisWidth: clamp(.94 + boneMass*.09 + muscleMass*.07,.94,1.16),
+    chestWidth:clamp(.98+boneMass*.05+muscleMass*.07,.98,1.12),
+    pelvisWidth:clamp(.97+boneMass*.06+muscleMass*.05,.97,1.12),
     furInflation,
     bodyCondition,
   }
