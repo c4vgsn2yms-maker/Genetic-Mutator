@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { autoBreed, breed, createFounder, type FounderBreed } from './genetics'
 import { CatPreview } from './CatPreview'
+import { Cat3DViewer } from './three/Cat3DViewer'
 import type { Individual, SimulationState } from './types'
 
 const STORAGE_KEY = 'genetic-mutator-v1'
@@ -163,7 +164,14 @@ export function App() {
         <section className="viewer-panel panel">
           {selected ? (
             <>
-              <CatPreview animal={selected} />
+              <div className="viewer-3d-heading">
+                <div>
+                  <span>LIVE 3D PHENOTYPE</span>
+                  <strong>{selected.name}</strong>
+                </div>
+                <small>Phase 1 anatomical model</small>
+              </div>
+              <Cat3DViewer animal={selected} />
               <div className="animal-facts">
                 <div><span>Sex</span><strong>{selected.sex}</strong></div>
                 <div><span>Generation</span><strong>{selected.generation.toLocaleString()}</strong></div>
