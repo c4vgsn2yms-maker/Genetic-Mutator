@@ -9,8 +9,9 @@ function supportsWebGL() {
   try {
     const canvas=document.createElement('canvas')
     return Boolean(
-      canvas.getContext('webgl2',{failIfMajorPerformanceCaveat:true}) ||
-      canvas.getContext('webgl',{failIfMajorPerformanceCaveat:true})
+      canvas.getContext('webgl2') ||
+      canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')
     )
   } catch {
     return false
@@ -23,19 +24,21 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
   if (!webgl) {
     return (
       <div className="viewer-3d-fallback">
+        <div className="render-status unavailable">3D BUILD 2.1 · WebGL unavailable</div>
         <CatPreview animal={animal} />
-        <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead.</p>
+        <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. If hardware acceleration is disabled, enabling it may allow the 3D model to load.</p>
       </div>
     )
   }
 
   return (
     <div className="viewer-3d-shell">
+      <div className="render-status active">3D BUILD 2.1 · renderer active</div>
       <Canvas
         shadows
-        dpr={[1,1.6]}
+        dpr={[1,1.25]}
         camera={{position:[5.5,3.0,5.2],fov:34,near:.1,far:100}}
-        gl={{antialias:true,alpha:true,powerPreference:'high-performance'}}
+        gl={{antialias:true,alpha:true}}
       >
         <color attach="background" args={['#0d1217']} />
         <fog attach="fog" args={['#0d1217',10,18]} />
@@ -45,8 +48,8 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
           position={[4.5,7,5]}
           intensity={2.1}
           castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
+          shadow-mapSize-width={512}
+          shadow-mapSize-height={512}
         />
         <directionalLight position={[-5,3,-4]} intensity={.72} color="#8fa6c5" />
 
