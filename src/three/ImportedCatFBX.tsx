@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture } from './catMaterial'
@@ -94,7 +95,7 @@ export function ImportedCatFBX({
 
   const display=useMemo(()=>{
     if (!source) return null
-    const clone=source.clone(true)
+    const clone=SkeletonUtils.clone(source) as Group
 
     const roughness=coatRoughness(animal)
     const tint=new THREE.Color(animal.phenotype.coatHex)
@@ -152,6 +153,16 @@ export function ImportedCatFBX({
   })
 
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
+
+  useEffect(()=>()=>{
+    if (!display) return
+    display.traverse(child=>{
+      const mesh=child as Mesh
+      if (!mesh.isMesh) return
+      if (Array.isArray(mesh.material)) mesh.material.forEach(m=>m.dispose())
+      else mesh.material?.dispose()
+    })
+  },[display])
 
   const geneticsScale=useMemo(()=>{
     const shoulder=clamp(animal.phenotype.shoulderCm/30,.72,1.75)
