@@ -1,4 +1,4 @@
-import type { GenePair, Genome, Individual, Phenotype, Sex } from './types'
+import type { GenePair, Genome, Individual, MutationKey, Phenotype, Sex } from './types'
 
 const LOCI: (keyof Genome)[] = [
   'sizePotential','growthDuration','boneMass','muscleMass','shoulderHeight',
@@ -45,6 +45,7 @@ function pair(v: number, spread: number, r: () => number): GenePair {
 }
 
 export type FounderBreed = 'Bengal' | 'Maine Coon' | 'Siberian' | 'Custom'
+export type FounderMutation = 'none' | MutationKey
 
 export function createFounder(
   name: string,
@@ -52,8 +53,9 @@ export function createFounder(
   breed: FounderBreed,
   lineage: string,
   colorBias = 0.5,
+  forcedMutation: FounderMutation = 'none',
 ): Individual {
-  const seedText = `${name}-${sex}-${breed}-${Date.now()}-${Math.random()}`
+  const seedText = `${name}-${sex}-${breed}-${forcedMutation}-${Date.now()}-${Math.random()}`
   const r = rngFromSeed(seedText)
   const profiles: Record<FounderBreed, {size:number; height:number; length:number; muscle:number; fur:number; rosette:number}> = {
     Bengal: { size:.58, height:.58, length:.62, muscle:.65, fur:.2, rosette:.9 },
@@ -85,6 +87,15 @@ export function createFounder(
     leucism: [0, 0],
     piebald: [0, r() < .08 ? 1 : 0],
   }
+
+  // Optional founder phenotype controls create real inherited alleles rather
+  // than display-only overrides. Recessive albinism needs two expressed
+  // alleles; the other named pigmentation mutations are dominant.
+  if (forcedMutation==='melanism') genome.melanism=[1,0]
+  if (forcedMutation==='albinism') genome.albinism=[1,1]
+  if (forcedMutation==='leucism') genome.leucism=[1,0]
+  if (forcedMutation==='piebald') genome.piebald=[1,1]
+
   const seed = Math.floor(r() * 2_147_483_647)
   const individual: Individual = {
     id: crypto.randomUUID(),
@@ -162,17 +173,19 @@ export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'s
     patternHex = '#ead9d2'
   } else if (leucism) {
     mutations.push('Leucism')
+    coatName = 'leucistic ' + coatName
     whiteFraction = Math.max(whiteFraction, .72)
   }
   if (piebald) {
     mutations.push('Piebald')
+    if (!albinism) coatName = 'piebald ' + coatName
     whiteFraction = Math.max(whiteFraction, .18 + .65 * avg(g.piebald))
   }
 
   const r = rngFromSeed(String(individual.seed))
   const rosetteScore = avg(g.rosette)
   const pattern: Phenotype['pattern'] =
-    albinism ? 'solid' : rosetteScore > .66 ? 'rosetted' : rosetteScore > .32 ? 'spotted' : 'solid'
+    rosetteScore > .66 ? 'rosetted' : rosetteScore > .32 ? 'spotted' : 'solid'
 
   return {
     weightKg: finite(weightKg, 4),
