@@ -150,3 +150,69 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
     radial-gradient(circle at 50% 74%, rgba(177,157,103,.22), transparent 38%),
     linear-gradient(#d7e2cf,#bdcbb4);
 }
+
+.model-source-tabs {
+  position:absolute;
+  left:10px;
+  top:46px;
+  z-index:6;
+  display:flex;
+  gap:5px;
+  padding:4px;
+  border-radius:10px;
+  background:rgba(7,10,13,.76);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(7px);
+}
+.model-source-tabs button {
+  border:1px solid transparent;
+  border-radius:7px;
+  background:transparent;
+  color:#a3adb8;
+  padding:6px 9px;
+  font-size:.68rem;
+  font-weight:800;
+}
+.model-source-tabs button.active {
+  background:#a8d2bf;
+  color:#0b1210;
+}
+.sketchfab-reference {
+  position:absolute;
+  inset:0;
+  background:#d7e2cf;
+}
+.sketchfab-reference iframe {
+  width:100%;
+  height:100%;
+  border:0;
+  display:block;
+}
+.sketchfab-credit {
+  position:absolute;
+  left:10px;
+  right:10px;
+  bottom:38px;
+  z-index:7;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:7px 9px;
+  border-radius:9px;
+  background:rgba(7,10,13,.76);
+  color:#c7d0d8;
+  font-size:.62rem;
+  backdrop-filter:blur(7px);
+}
+.sketchfab-credit a {
+  color:#9ed5c0;
+  font-weight:800;
+  text-decoration:none;
+}
+.sketchfab-credit a:hover { text-decoration:underline; }
+
+@media (max-width:560px) {
+  .model-source-tabs { top:44px; left:8px; }
+  .model-source-tabs button { padding:5px 6px; font-size:.61rem; }
+  .sketchfab-credit { flex-direction:column; bottom:36px; }
+}
