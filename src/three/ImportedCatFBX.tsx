@@ -33,7 +33,6 @@ export function ImportedCatFBX({
     animal.phenotype.pattern,
     animal.phenotype.whiteFraction,
     animal.phenotype.mutationLabels.join('|'),
-    appearance,
   ])
   const coatTexture=useMemo(()=>createCoatTexture(animal,appearance),[
     animal.id,
@@ -43,6 +42,7 @@ export function ImportedCatFBX({
     animal.phenotype.patternDensity,
     animal.phenotype.whiteFraction,
     animal.phenotype.mutationLabels.join('|'),
+    appearance,
   ])
 
   useEffect(()=>{
