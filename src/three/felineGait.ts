@@ -54,10 +54,10 @@ export function limbPose(
   if (gait==='idle') {
     const settle=Math.sin(elapsed*.75+(hind?1.1:0)+(side===1?0:.8))
     return {
-      upper:(hind?-.16:.06)+settle*.012,
-      lower:(hind?.25:-.04)-settle*.008,
-      pastern:hind?-.12:.025,
-      paw:0,
+      upper:(hind?-.46:.07)+settle*.012,
+      lower:(hind?.82:-.10)-settle*.008,
+      pastern:hind?-.38:.07,
+      paw:hind?.06:.015,
       lift:Math.max(0,settle)*.008,
       shoulder:settle*.008,
     }
@@ -70,11 +70,11 @@ export function limbPose(
   const swingLift=Math.pow(Math.max(0,wave),1.65)
   const amp=gait==='walk'?.22:gait==='trot'?.34:.47
 
-  const upperBase=hind?-.18:.06
-  const lowerBase=hind?.25:-.04
+  const upperBase=hind?-.44:.07
+  const lowerBase=hind?.78:-.10
   const upper=upperBase+forward*amp*(hind?.95:1)
   const lower=lowerBase+swingLift*(gait==='run'?.62:gait==='trot'?.48:.34)-(1-swingLift)*amp*.16
-  const pastern=(hind?-.12:.025)-swingLift*(hind?.28:.18)
+  const pastern=(hind?-.36:.07)-swingLift*(hind?.22:.14)
   const paw=-upper*.18-lower*.08
 
   return {
