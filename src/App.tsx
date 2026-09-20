@@ -169,7 +169,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.1 WildMesh realistic cat visual · fake gait removed</small>
+                <small>Phase 7.2 real rigged FBX cat · genetics-based dimensions</small>
               </div>
               <Cat3DViewer animal={selected} />
               <div className="animal-facts">
