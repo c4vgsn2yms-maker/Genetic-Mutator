@@ -6,6 +6,7 @@ import type { Individual } from '../types'
 import { CatPreview } from '../CatPreview'
 import { CatModel3D } from './CatModel3D'
 import { CatEnvironment } from './CatEnvironment'
+import { SketchfabCatReference } from './SketchfabCatReference'
 import type { FelineGait } from './felineGait'
 
 function supportsWebGL() {
@@ -27,21 +28,30 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
   const webgl=useMemo(()=>supportsWebGL(),[])
   const [gait,setGait]=useState<FelineGait>('idle')
   const [showSkeleton,setShowSkeleton]=useState(false)
+  const [viewMode,setViewMode]=useState<'genetic'|'reference'>('genetic')
 
-  if (!webgl) {
+  if (viewMode==='genetic' && !webgl) {
     return (
       <div className="viewer-3d-fallback">
-        <div className="render-status unavailable">3D BUILD 6.1 · WebGL unavailable</div>
+        <div className="model-source-tabs">
+          <button className="active" onClick={()=>setViewMode('genetic')}>Genetic Model</button>
+          <button onClick={()=>setViewMode('reference')}>Realistic Reference</button>
+        </div>
+        <div className="render-status unavailable">3D BUILD 6.2 · WebGL unavailable</div>
         <CatPreview animal={animal} />
-        <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. If hardware acceleration is disabled, enabling it may allow the 3D model to load.</p>
+        <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. You can still switch to Realistic Reference to view the Sketchfab model.</p>
       </div>
     )
   }
 
   return (
     <div className="viewer-3d-shell">
-      <div className="render-status active">3D BUILD 6.1 · corrected feline silhouette + relit habitat</div>
-      <div className="gait-controls" aria-label="3D animation preview">
+      <div className="render-status active">3D BUILD 6.2 · realistic reference + genetic model</div>
+      <div className="model-source-tabs" aria-label="3D model source">
+        <button className={viewMode==='genetic'?'active':''} onClick={()=>setViewMode('genetic')}>Genetic Model</button>
+        <button className={viewMode==='reference'?'active':''} onClick={()=>setViewMode('reference')}>Realistic Reference</button>
+      </div>
+      {viewMode==='genetic' && <div className="gait-controls" aria-label="3D animation preview">
         {GAITS.map(name=>(
           <button key={name} className={gait===name?'active':''} onClick={()=>setGait(name)}>
             {name[0].toUpperCase()+name.slice(1)}
@@ -50,7 +60,10 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
         <button className={showSkeleton?'active skeleton-button':'skeleton-button'} onClick={()=>setShowSkeleton(v=>!v)}>
           Skeleton
         </button>
-      </div>
+      </div>}
+      {viewMode==='reference' ? (
+        <SketchfabCatReference />
+      ) : (
       <Canvas
         shadows
         dpr={[1,1.25]}
@@ -103,7 +116,12 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
           target={[0,1.35,0]}
         />
       </Canvas>
-      <div className="viewer-3d-hint">Drag to rotate · zoom · choose Rest to inspect the resting pose · Skeleton shows the internal armature</div>
+      )}
+      <div className="viewer-3d-hint">
+        {viewMode==='reference'
+          ? 'Realistic anatomy reference from Sketchfab · this model is not connected to genetics yet'
+          : 'Drag to rotate · zoom · choose Rest to inspect the resting pose · Skeleton shows the internal armature'}
+      </div>
     </div>
   )
 }
