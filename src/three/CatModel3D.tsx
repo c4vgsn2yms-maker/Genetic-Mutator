@@ -8,6 +8,7 @@ import { phenotypeToCatModel } from './catPhenotypeToModel'
 import { createCatHeadGeometry, createCatMuzzleGeometry, createEarGeometry, createFelineCoreGeometry, createSmoothTailGeometry, felineLandmarks } from './felineGeometry'
 import { animateFelineRig, createFelineRig } from './felineRig'
 import { bodyLocomotion, limbPose, type FelineGait } from './felineGait'
+import { applyAgeMorph, type CatAgeStage } from './catAgeMorph'
 
 interface CoatProps {
   map: THREE.Texture | undefined
@@ -143,7 +144,17 @@ function Whiskers({x,y,z,side}:{x:number;y:number;z:number;side:1|-1}) {
   return <group>{lines.map((line,i)=><primitive object={line} key={i} />)}</group>
 }
 
-export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Individual;gait?:FelineGait;showSkeleton?:boolean}) {
+export function CatModel3D({
+  animal,
+  gait='idle',
+  showSkeleton=false,
+  ageStage='adult',
+}:{
+  animal:Individual
+  gait?:FelineGait
+  showSkeleton?:boolean
+  ageStage?:CatAgeStage
+}) {
   const locomotionRoot=useRef<Group>(null)
   const leftScapula=useRef<THREE.Mesh>(null)
   const rightScapula=useRef<THREE.Mesh>(null)
@@ -153,7 +164,7 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
   const headGroup=useRef<Group>(null)
   const tailGroup=useRef<Group>(null)
 
-  const model=useMemo(()=>phenotypeToCatModel(animal),[animal])
+  const model=useMemo(()=>applyAgeMorph(phenotypeToCatModel(animal),ageStage),[animal,ageStage])
   const landmarks=useMemo(()=>felineLandmarks(model),[model])
   const coatTexture=useMemo(()=>createCoatTexture(animal),[
     animal.id,
