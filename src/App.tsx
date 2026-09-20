@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { autoBreed, breed, createFounder, type FounderBreed, type FounderMutation } from './genetics'
+import { autoBreed, breed, calculatePhenotype, createFounder, type FounderBreed, type FounderMutation } from './genetics'
 import { CatPreview } from './CatPreview'
 import { Cat3DViewer } from './three/Cat3DViewer'
 import type { Individual, SimulationState } from './types'
@@ -31,7 +31,14 @@ function loadState(): SimulationState {
     if (!raw) return makeInitialState()
     const parsed = JSON.parse(raw) as SimulationState
     if (!Array.isArray(parsed.individuals) || !parsed.individuals.length) return makeInitialState()
-    return parsed
+
+    // Re-resolve saved phenotypes from their genomes so visual/genetic fixes
+    // apply to existing cats without deleting the player's population.
+    const individuals = parsed.individuals.map(animal => ({
+      ...animal,
+      phenotype: calculatePhenotype(animal),
+    }))
+    return {...parsed, individuals}
   } catch {
     return makeInitialState()
   }
@@ -170,7 +177,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.3 mutation-accurate FBX coat · albino/melanistic breeding</small>
+                <small>Phase 7.3.1 mutation coat fix · saved phenotypes refreshed</small>
               </div>
               <Cat3DViewer animal={selected} />
               <div className="animal-facts">
