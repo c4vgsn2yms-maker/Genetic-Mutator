@@ -279,7 +279,7 @@ export function App() {
                 </div>
                 <small>Phase 7.4 founder genome editor + environmental natural selection</small>
               </div>
-              <Cat3DViewer animal={selected} />
+              <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
                 <div><span>Sex</span><strong>{selected.sex}</strong></div>
                 <div><span>Generation</span><strong>{selected.generation.toLocaleString()}</strong></div>
