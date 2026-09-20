@@ -119,6 +119,12 @@ function TailSegment({
   useFrame(({clock})=>{
     if (!joint.current) return
     const t=clock.elapsedTime
+    if (gait==='rest') {
+      const curl=(index+1)/count
+      joint.current.rotation.y=.12+curl*.16+Math.sin(t*.32+(seed%37)*.11-index*.25)*.012
+      joint.current.rotation.z=(index===0?-.24:.05)+curl*.055
+      return
+    }
     const energy=gait==='idle'?1:gait==='walk'?1.15:gait==='trot'?1.30:1.48
     const wave=Math.sin(t*(.72*energy)+(seed%37)*.11-index*.48)
     const secondary=Math.sin(t*(.43*energy)+(seed%53)*.07-index*.31)
@@ -180,10 +186,13 @@ function Whiskers({x,y,z,side}:{x:number;y:number;z:number;side:1|-1}) {
   return <group>{lines.map((line,i)=><primitive object={line} key={i} />)}</group>
 }
 
-export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineGait}) {
+export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Individual;gait?:FelineGait;showSkeleton?:boolean}) {
   const locomotionRoot=useRef<Group>(null)
   const leftScapula=useRef<THREE.Mesh>(null)
   const rightScapula=useRef<THREE.Mesh>(null)
+  const leftEarGroup=useRef<Group>(null)
+  const rightEarGroup=useRef<Group>(null)
+  const jawGroup=useRef<Group>(null)
 
   const model=useMemo(()=>phenotypeToCatModel(animal),[animal])
   const landmarks=useMemo(()=>felineLandmarks(model),[model])
@@ -216,11 +225,22 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
     return {mesh,geometry,material,rig}
   },[model,coatTexture,animal.phenotype.coatHex,roughness])
 
+  const skeletonHelper=useMemo(()=>{
+    const helper=new THREE.SkeletonHelper(skinnedCore.mesh)
+    helper.visible=showSkeleton
+    return helper
+  },[skinnedCore.mesh])
+
+  useEffect(()=>{
+    skeletonHelper.visible=showSkeleton
+  },[showSkeleton,skeletonHelper])
+
   useEffect(()=>()=> {
     skinnedCore.geometry.dispose()
     skinnedCore.material.dispose()
     skinnedCore.rig.skeleton.dispose()
-  },[skinnedCore])
+    skeletonHelper.dispose()
+  },[skinnedCore,skeletonHelper])
 
   const leftEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
   const rightEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
@@ -233,8 +253,12 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
 
   useFrame(({clock})=>{
     const t=clock.elapsedTime
-    animateFelineRig(skinnedCore.rig,t,animal.seed)
+    animateFelineRig(skinnedCore.rig,t,animal.seed,gait==='rest')
     const movement=bodyLocomotion(gait,t,model.legLength,model.bodyLength)
+
+    if (leftEarGroup.current) leftEarGroup.current.rotation.x=skinnedCore.rig.leftEar.rotation.x
+    if (rightEarGroup.current) rightEarGroup.current.rotation.x=skinnedCore.rig.rightEar.rotation.x
+    if (jawGroup.current) jawGroup.current.rotation.z=skinnedCore.rig.jaw.rotation.z
 
     if (locomotionRoot.current) {
       locomotionRoot.current.position.y=movement.bob
@@ -242,7 +266,7 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
       locomotionRoot.current.rotation.x=movement.roll
     }
 
-    const strideRate=gait==='idle'?.72:gait==='walk'?1.3:gait==='trot'?2.0:2.8
+    const strideRate=gait==='rest'?.35:gait==='idle'?.72:gait==='walk'?1.3:gait==='trot'?2.0:2.8
     const scapulaShift=Math.sin(t*strideRate+(animal.seed%23))*(gait==='idle'?.014:gait==='walk'?.035:gait==='trot'?.052:.070)
     if (leftScapula.current) leftScapula.current.position.x=shoulderX-.02+scapulaShift
     if (rightScapula.current) rightScapula.current.position.x=shoulderX-.02-scapulaShift
@@ -268,6 +292,7 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
     <group scale={model.overallScale}>
       <group ref={locomotionRoot}>
         <primitive object={skinnedCore.mesh} />
+        <primitive object={skeletonHelper} />
 
         <mesh ref={leftScapula} position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.36*model.limbThickness,.15,.23]} castShadow>
           <sphereGeometry args={[1,22,14]} />
@@ -278,11 +303,38 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
           <meshStandardMaterial {...coatProps} />
         </mesh>
 
-        <mesh geometry={leftEar} position={[headX-.04,headY+.35,earZ]} rotation={[.02,0,-.08]} castShadow>
-          <meshStandardMaterial {...coatProps} side={THREE.DoubleSide} />
+        <group ref={leftEarGroup} position={[headX-.04,headY+.35,earZ]} rotation={[.02,0,-.08]}>
+          <mesh geometry={leftEar} castShadow>
+            <meshStandardMaterial {...coatProps} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={leftEar} position={[.012,.012,-.010]} scale={[.70,.72,.62]}>
+            <meshStandardMaterial color={albino?'#efc7c8':'#b77f7e'} roughness={.92} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+        <group ref={rightEarGroup} position={[headX-.04,headY+.35,-earZ]} rotation={[-.02,0,-.08]}>
+          <mesh geometry={rightEar} castShadow>
+            <meshStandardMaterial {...coatProps} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={rightEar} position={[.012,.012,.010]} scale={[.70,.72,.62]}>
+            <meshStandardMaterial color={albino?'#efc7c8':'#b77f7e'} roughness={.92} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+
+        <mesh position={[headX+.16,headY-.02,.31*model.skullScale]} scale={[.26,.25,.19*model.skullScale]} castShadow>
+          <sphereGeometry args={[1,24,16]} />
+          <meshStandardMaterial {...coatProps} />
         </mesh>
-        <mesh geometry={rightEar} position={[headX-.04,headY+.35,-earZ]} rotation={[-.02,0,-.08]} castShadow>
-          <meshStandardMaterial {...coatProps} side={THREE.DoubleSide} />
+        <mesh position={[headX+.16,headY-.02,-.31*model.skullScale]} scale={[.26,.25,.19*model.skullScale]} castShadow>
+          <sphereGeometry args={[1,24,16]} />
+          <meshStandardMaterial {...coatProps} />
+        </mesh>
+        <mesh position={[muzzleX+.02,headY-.12,.17]} scale={[.24*model.muzzleScale,.17,.16]} castShadow>
+          <sphereGeometry args={[1,22,14]} />
+          <meshStandardMaterial {...coatProps} />
+        </mesh>
+        <mesh position={[muzzleX+.02,headY-.12,-.17]} scale={[.24*model.muzzleScale,.17,.16]} castShadow>
+          <sphereGeometry args={[1,22,14]} />
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <Eye x={headX+.30} y={headY+.10} z={.275*model.skullScale} color={eyeColor} />
@@ -293,10 +345,16 @@ export function CatModel3D({animal,gait='idle'}:{animal:Individual;gait?:FelineG
           <meshPhysicalMaterial color={noseColor} roughness={.38} clearcoat={.34} />
         </mesh>
 
-        <mesh position={[muzzleX+.13*model.muzzleScale,headY-.21,0]} scale={[.19,.07,.19]}>
-          <sphereGeometry args={[1,18,10]} />
-          <meshStandardMaterial color="#d3c4bb" transparent opacity={albino?.38:.16} roughness={.92} />
-        </mesh>
+        <group ref={jawGroup} position={[muzzleX+.10*model.muzzleScale,headY-.20,0]}>
+          <mesh position={[.03,0,0]} scale={[.22,.085,.18]}>
+            <sphereGeometry args={[1,20,12]} />
+            <meshStandardMaterial color={albino?'#e6d2cf':animal.phenotype.coatHex} roughness={.88} />
+          </mesh>
+          <mesh position={[.16,.055,0]} scale={[.075,.018,.13]}>
+            <sphereGeometry args={[1,16,10]} />
+            <meshStandardMaterial color="#39282b" roughness={.95} />
+          </mesh>
+        </group>
 
         <Whiskers x={muzzleX+.10} y={headY-.11} z={.18} side={1} />
         <Whiskers x={muzzleX+.10} y={headY-.11} z={-.18} side={-1} />
