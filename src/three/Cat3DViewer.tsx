@@ -41,7 +41,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
           <button className="active" onClick={()=>setViewMode('genetic')}>Genetic Model</button>
           <button onClick={()=>setViewMode('reference')}>Realistic Reference</button>
         </div>
-        <div className="render-status unavailable">3D BUILD 6.4 · WebGL unavailable</div>
+        <div className="render-status unavailable">3D BUILD 6.5 · WebGL unavailable</div>
         <CatPreview animal={animal} />
         <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. You can still switch to Realistic Reference to view the Sketchfab model.</p>
       </div>
@@ -50,7 +50,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
 
   return (
     <div className="viewer-3d-shell">
-      <div className="render-status active">3D BUILD 6.4 · reference-calibrated feline anatomy</div>
+      <div className="render-status active">3D BUILD 6.5 · continuous feline silhouette + corrected limb anatomy</div>
       <div className="model-source-tabs" aria-label="3D model source">
         <button className={viewMode==='genetic'?'active':''} onClick={()=>setViewMode('genetic')}>Genetic Model</button>
         <button className={viewMode==='reference'?'active':''} onClick={()=>setViewMode('reference')}>Realistic Reference</button>
