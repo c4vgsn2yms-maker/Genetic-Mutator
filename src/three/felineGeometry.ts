@@ -33,7 +33,7 @@ export function felineLandmarks(model: CatModelParams): FelineLandmarks {
 }
 
 export function createFelineCoreGeometry(model: CatModelParams) {
-  const {bodyY,shoulderX,hipX,headX,headY,muzzleX}=felineLandmarks(model)
+  const {bodyY,shoulderX,hipX}=felineLandmarks(model)
   const L=model.bodyLength
   const H=model.bodyHeight
   const W=model.bodyWidth
