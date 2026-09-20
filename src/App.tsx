@@ -169,7 +169,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 4 articulated locomotion rig</small>
+                <small>Phase 5 habitat + expanded anatomy rig</small>
               </div>
               <Cat3DViewer animal={selected} />
               <div className="animal-facts">
