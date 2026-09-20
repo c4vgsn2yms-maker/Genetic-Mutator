@@ -2,31 +2,6 @@ import * as THREE from 'three'
 import type { Individual } from '../types'
 import { rngFromSeed } from '../genetics'
 
-function roundedBlob(
-  ctx: CanvasRenderingContext2D,
-  x:number,
-  y:number,
-  rx:number,
-  ry:number,
-  color:string,
-  ring=false,
-) {
-  ctx.save()
-  ctx.translate(x,y)
-  ctx.rotate((Math.random()-.5)*.5)
-  ctx.beginPath()
-  ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2)
-  if (ring) {
-    ctx.strokeStyle=color
-    ctx.lineWidth=Math.max(2,rx*.32)
-    ctx.stroke()
-  } else {
-    ctx.fillStyle=color
-    ctx.fill()
-  }
-  ctx.restore()
-}
-
 export function createCoatTexture(animal: Individual) {
   const canvas = document.createElement('canvas')
   canvas.width = 768
