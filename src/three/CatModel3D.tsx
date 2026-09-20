@@ -40,7 +40,7 @@ function ArticulatedLeg({
   const upper=length*(hind?.49:.46)
   const lower=length*(hind?.40:.43)
   const pastern=length*(hind?.25:.17)
-  const hipY=1.40
+  const hipY=1.44
 
   useFrame(({clock})=>{
     const pose=limbPose(gait,clock.elapsedTime,side,hind,length,bodyLength)
@@ -62,28 +62,28 @@ function ArticulatedLeg({
   return (
     <group ref={root} position={[x,hipY,z]}>
       <group ref={upperJoint}>
-        <mesh position={[0,-upper*.48,0]} castShadow>
-          <capsuleGeometry args={[upperRadius,Math.max(.12,upper-upperRadius*2),8,14]} />
+        <mesh position={[0,-upper*.46,0]} scale={[1,1,.86]} castShadow>
+          <cylinderGeometry args={[upperRadius*.78,upperRadius*1.10,Math.max(.16,upper*.88),12,2,false]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
-        <mesh position={[0,-upper,0]} scale={[upperRadius*1.20,upperRadius*.82,upperRadius*1.14]} castShadow>
+        <mesh position={[0,-upper,0]} scale={[upperRadius*.92,upperRadius*.70,upperRadius*.88]} castShadow>
           <sphereGeometry args={[1,14,10]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <group ref={lowerJoint} position={[0,-upper,0]}>
-          <mesh position={[0,-lower*.48,0]} castShadow>
-            <capsuleGeometry args={[lowerRadius,Math.max(.10,lower-lowerRadius*2),7,12]} />
+          <mesh position={[0,-lower*.46,0]} scale={[1,1,.84]} castShadow>
+            <cylinderGeometry args={[lowerRadius*.68,lowerRadius*.96,Math.max(.14,lower*.90),11,2,false]} />
             <meshStandardMaterial {...coatProps} />
           </mesh>
-          <mesh position={[0,-lower,0]} scale={[lowerRadius*1.12,lowerRadius*.86,lowerRadius*1.08]} castShadow>
+          <mesh position={[0,-lower,0]} scale={[lowerRadius*.84,lowerRadius*.64,lowerRadius*.80]} castShadow>
             <sphereGeometry args={[1,12,9]} />
             <meshStandardMaterial {...coatProps} />
           </mesh>
 
           <group ref={pasternJoint} position={[0,-lower,0]}>
-            <mesh position={[0,-pastern*.46,0]} castShadow>
-              <capsuleGeometry args={[pasternRadius,Math.max(.08,pastern-pasternRadius*2),6,10]} />
+            <mesh position={[0,-pastern*.46,0]} scale={[1,1,.78]} castShadow>
+              <cylinderGeometry args={[pasternRadius*.62,pasternRadius*.88,Math.max(.10,pastern*.88),10,1,false]} />
               <meshStandardMaterial {...coatProps} />
             </mesh>
 
@@ -246,8 +246,8 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
     else skeletonHelper.material.dispose()
   },[skinnedCore,skeletonHelper])
 
-  const leftEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
-  const rightEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
+  const leftEar=useMemo(()=>createEarGeometry(.19*model.earScale*model.skullScale,.54*model.earScale,.058),[model.earScale,model.skullScale])
+  const rightEar=useMemo(()=>createEarGeometry(.19*model.earScale*model.skullScale,.54*model.earScale,.058),[model.earScale,model.skullScale])
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
   useEffect(()=>()=>{ leftEar.dispose(); rightEar.dispose() },[leftEar,rightEar])
 
@@ -291,7 +291,7 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
   const tailSegments=7
   const totalTailLength=1.62*model.tailScale
   const tailSegmentLength=totalTailLength/tailSegments
-  const tailRadius=.068+model.bodyWidth*.018+animal.phenotype.furLength*.025
+  const tailRadius=(.060+model.bodyWidth*.015)*model.tailThickness + model.furInflation*.10
 
   return (
     <group scale={model.overallScale}>
@@ -299,11 +299,11 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
         <primitive object={skinnedCore.mesh} />
         <primitive object={skeletonHelper} />
 
-        <mesh ref={leftScapula} position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.36*model.limbThickness,.15,.23]} castShadow>
+        <mesh ref={leftScapula} position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.30*model.limbThickness,.105,.18]} castShadow>
           <sphereGeometry args={[1,22,14]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
-        <mesh ref={rightScapula} position={[shoulderX-.02,bodyY+.42,-legZ*.72]} rotation={[0,-.05,-.28]} scale={[.36*model.limbThickness,.15,.23]} castShadow>
+        <mesh ref={rightScapula} position={[shoulderX-.02,bodyY+.42,-legZ*.72]} rotation={[0,-.05,-.28]} scale={[.30*model.limbThickness,.105,.18]} castShadow>
           <sphereGeometry args={[1,22,14]} />
           <meshStandardMaterial {...coatProps} />
         </mesh>
@@ -324,23 +324,6 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
             <meshStandardMaterial color={albino?'#efc7c8':'#b77f7e'} roughness={.92} side={THREE.DoubleSide} />
           </mesh>
         </group>
-
-        <mesh position={[headX+.16,headY-.02,.31*model.skullScale]} scale={[.26,.25,.19*model.skullScale]} castShadow>
-          <sphereGeometry args={[1,24,16]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
-        <mesh position={[headX+.16,headY-.02,-.31*model.skullScale]} scale={[.26,.25,.19*model.skullScale]} castShadow>
-          <sphereGeometry args={[1,24,16]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
-        <mesh position={[muzzleX+.02,headY-.12,.17]} scale={[.24*model.muzzleScale,.17,.16]} castShadow>
-          <sphereGeometry args={[1,22,14]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
-        <mesh position={[muzzleX+.02,headY-.12,-.17]} scale={[.24*model.muzzleScale,.17,.16]} castShadow>
-          <sphereGeometry args={[1,22,14]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
 
         <Eye x={headX+.30} y={headY+.10} z={.275*model.skullScale} color={eyeColor} />
         <Eye x={headX+.30} y={headY+.10} z={-.275*model.skullScale} color={eyeColor} />
