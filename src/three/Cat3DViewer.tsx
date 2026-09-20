@@ -2,21 +2,21 @@ import { useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Individual } from '../types'
+import type { EnvironmentSettings, Individual } from '../types'
 import { ImportedCatFBX } from './ImportedCatFBX'
 import { CatEnvironment } from './CatEnvironment'
 
-export function Cat3DViewer({animal}:{animal:Individual}) {
+export function Cat3DViewer({animal,environment}:{animal:Individual;environment:EnvironmentSettings}) {
   const [loadState,setLoadState]=useState<'loading'|'ready'|'error'>('loading')
 
   return (
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? '3D BUILD 7.3.1 · loading real FBX cat'
+          ? '3D BUILD 7.4 · loading real FBX cat'
           : loadState==='ready'
-            ? '3D BUILD 7.3.1 · rigged FBX cat active'
-            : '3D BUILD 7.3.1 · FBX unavailable'}
+            ? '3D BUILD 7.4 · rigged FBX cat active'
+            : '3D BUILD 7.4 · FBX unavailable'}
       </div>
 
       <Canvas
@@ -46,7 +46,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
         <directionalLight position={[-4,3.2,4.5]} intensity={.46} color="#d5e3ee" />
         <directionalLight position={[-3.5,5,-5]} intensity={.58} color="#efe4cf" />
 
-        <CatEnvironment />
+        <CatEnvironment environment={environment} />
         <ImportedCatFBX animal={animal} onLoadState={setLoadState} />
         <ContactShadows position={[0,.01,0]} opacity={.28} scale={7} blur={3.2} far={5} />
 
@@ -68,7 +68,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
 
       <div className="viewer-3d-hint">
         {loadState==='ready'
-          ? `Viewing ${animal.name} · imported rigged cat · inherited size/build + mutation coat active`
+          ? `Viewing ${animal.name} · imported rigged cat · inherited phenotype + habitat selection active`
           : loadState==='error'
             ? 'The external FBX could not be loaded. Try refreshing or opening the site again.'
             : 'Loading the imported cat model…'}
