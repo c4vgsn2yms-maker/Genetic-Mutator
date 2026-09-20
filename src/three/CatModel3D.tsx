@@ -133,7 +133,6 @@ export function CatModel3D({animal}:{animal:Individual}) {
       color:coatTexture?'white':animal.phenotype.coatHex,
       roughness,
       metalness:0,
-      skinning:true,
     })
     const mesh=new THREE.SkinnedMesh(geometry,material)
     const rig=createFelineRig(model)
