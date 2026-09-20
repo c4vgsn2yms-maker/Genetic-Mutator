@@ -219,7 +219,7 @@ export function breed(
   const genome = {} as Genome
 
   for (const locus of LOCI) {
-    genome[locus] = [
+    (genome as Record<keyof Genome, GenePair>)[locus] = [
       gameteValue(mother.genome[locus], r, mutationRate),
       gameteValue(father.genome[locus], r, mutationRate),
     ]
@@ -276,6 +276,15 @@ export function autoBreed(
       const mother = rankedF[i % rankedF.length]
       const father = rankedM[(i * 3 + gen) % rankedM.length]
       next.push(breed(mother, father, lineage, undefined, mutationRate, `auto-${gen}-${i}`))
+    }
+    // Keep automated selection viable even if random sex assignment produces an all-one-sex generation.
+    if (!next.some(a => a.sex === 'female') && next[0]) {
+      next[0].sex = 'female'
+      next[0].phenotype = calculatePhenotype(next[0])
+    }
+    if (!next.some(a => a.sex === 'male') && next[1]) {
+      next[1].sex = 'male'
+      next[1].phenotype = calculatePhenotype(next[1])
     }
     population = next
   }
