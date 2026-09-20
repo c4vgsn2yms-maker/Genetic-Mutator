@@ -91,3 +91,21 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
   .viewer-3d-shell { height:330px; }
   .viewer-3d-heading { align-items:flex-start; flex-direction:column; gap:5px; }
 }
+
+.render-status {
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:4;
+  padding:6px 9px;
+  border-radius:999px;
+  font-size:.66rem;
+  font-weight:850;
+  letter-spacing:.08em;
+  border:1px solid rgba(255,255,255,.10);
+  backdrop-filter:blur(7px);
+  pointer-events:none;
+}
+.render-status.active { background:rgba(25,71,54,.76); color:#bde8d4; }
+.render-status.unavailable { position:relative; display:inline-block; top:auto; left:auto; margin:2px 4px 8px; background:rgba(96,46,32,.72); color:#f0c0aa; }
+.viewer-3d-fallback { position:relative; }
