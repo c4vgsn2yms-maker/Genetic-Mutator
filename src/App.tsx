@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { autoBreed, breed, createFounder, type FounderBreed } from './genetics'
+import { autoBreed, breed, createFounder, type FounderBreed, type FounderMutation } from './genetics'
 import { CatPreview } from './CatPreview'
 import { Cat3DViewer } from './three/Cat3DViewer'
 import type { Individual, SimulationState } from './types'
@@ -55,6 +55,7 @@ export function App() {
   const [founderName, setFounderName] = useState('New Founder')
   const [founderSex, setFounderSex] = useState<'male'|'female'>('female')
   const [founderBreed, setFounderBreed] = useState<FounderBreed>('Custom')
+  const [founderMutation, setFounderMutation] = useState<FounderMutation>('none')
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
@@ -122,10 +123,10 @@ export function App() {
 
   function addFounder(event: FormEvent) {
     event.preventDefault()
-    const founder = createFounder(founderName.trim() || 'Founder',founderSex,founderBreed,state.lineage)
+    const founder = createFounder(founderName.trim() || 'Founder',founderSex,founderBreed,state.lineage,.5,founderMutation)
     setState(s => ({...s,individuals:[founder,...s.individuals]}))
     setSelectedId(founder.id)
-    setStatus(`${founder.name} added as a new unrelated founder.`)
+    setStatus(`${founder.name} added as a new unrelated founder${founderMutation==='none'?'':` with expressed ${founderMutation}`}.`)
   }
 
   function resetSimulation() {
@@ -169,7 +170,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.2 real rigged FBX cat · genetics-based dimensions</small>
+                <small>Phase 7.3 mutation-accurate FBX coat · albino/melanistic breeding</small>
               </div>
               <Cat3DViewer animal={selected} />
               <div className="animal-facts">
@@ -249,6 +250,16 @@ export function App() {
                   </select>
                 </label>
               </div>
+              <label>Expressed coat mutation
+                <select value={founderMutation} onChange={e=>setFounderMutation(e.target.value as FounderMutation)}>
+                  <option value="none">None / natural genetics</option>
+                  <option value="melanism">Melanistic</option>
+                  <option value="albinism">Albino</option>
+                  <option value="leucism">Leucistic</option>
+                  <option value="piebald">Piebald</option>
+                </select>
+              </label>
+              <p className="helper">Founder mutation choices write the actual inherited locus. Albino founders receive two recessive albinism alleles; melanism, leucism, and piebald are entered as expressed dominant traits.</p>
               <button className="secondary wide" type="submit">Add founder</button>
             </form>
           </section>
