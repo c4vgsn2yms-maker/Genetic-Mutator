@@ -216,12 +216,14 @@ export function ImportedCatFBX({
     const mass=clamp(animal.phenotype.weightKg/5.5,.55,3.5)
     const bone=clamp(avg(animal.genome.boneMass),0,1)
     const muscle=clamp(avg(animal.genome.muscleMass),0,1)
+    const legGene=clamp(avg(animal.genome.legLength),0,1)
+    const fur=clamp(animal.phenotype.furLength,0,1)
 
     // Keep deformation deliberately subtle so the imported feline anatomy
-    // remains intact. More local variation will use morph targets later.
-    const sx=clamp(.94+(length-1)*.26,.84,1.22)
-    const sy=clamp(.95+(shoulder-1)*.24,.86,1.24)
-    const sz=clamp(.94+(Math.pow(mass,.22)-1)*.24+(bone-.5)*.05+(muscle-.5)*.05,.84,1.22)
+    // remains intact while still reflecting inherited founder customization.
+    const sx=clamp(.94+(length-1)*.30,.82,1.25)
+    const sy=clamp((.95+(shoulder-1)*.22)*(.93+(legGene-.5)*.16),.82,1.27)
+    const sz=clamp((.94+(Math.pow(mass,.22)-1)*.24+(bone-.5)*.05+(muscle-.5)*.05)*(1+(fur-.5)*.035),.82,1.24)
     return [sx,sy,sz] as [number,number,number]
   },[animal])
 
