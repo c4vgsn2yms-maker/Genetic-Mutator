@@ -307,3 +307,28 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
     font-size:.58rem;
   }
 }
+
+/* Phase 7.0: the reference browser is removed; the live imported cat is the only 3D model. */
+.imported-cat-viewer .imported-age-controls {
+  top:48px;
+  left:10px;
+}
+.imported-cat-viewer .imported-gait-controls {
+  top:10px;
+  right:10px;
+}
+@media (max-width:560px) {
+  .imported-cat-viewer .imported-age-controls {
+    top:44px;
+    left:8px;
+    right:auto;
+    width:auto;
+    max-width:calc(100% - 16px);
+  }
+  .imported-cat-viewer .imported-gait-controls {
+    top:82px;
+    left:8px;
+    right:8px;
+    width:auto;
+  }
+}
