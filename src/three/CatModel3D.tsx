@@ -239,7 +239,9 @@ export function CatModel3D({animal,gait='idle',showSkeleton=false}:{animal:Indiv
     skinnedCore.geometry.dispose()
     skinnedCore.material.dispose()
     skinnedCore.rig.skeleton.dispose()
-    skeletonHelper.dispose()
+    skeletonHelper.geometry.dispose()
+    if (Array.isArray(skeletonHelper.material)) skeletonHelper.material.forEach(m=>m.dispose())
+    else skeletonHelper.material.dispose()
   },[skinnedCore,skeletonHelper])
 
   const leftEar=useMemo(()=>createEarGeometry(.205*model.earScale,.58*model.earScale,.075),[model.earScale])
