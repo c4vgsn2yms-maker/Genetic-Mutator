@@ -6,6 +6,9 @@ interface CrossSection {
   y: number
   radiusY: number
   radiusZ: number
+  boneA: number
+  boneB: number
+  mix: number
 }
 
 export interface FelineLandmarks {
@@ -36,24 +39,32 @@ export function createFelineCoreGeometry(model: CatModelParams) {
   const neck=model.neckScale
 
   const sections: CrossSection[]=[
-    {x:-L*.56,y:bodyY+.03,radiusY:H*.44*model.haunchScale,radiusZ:W*.56},
-    {x:-L*.47,y:bodyY+.00,radiusY:H*.80*model.haunchScale,radiusZ:W*.90},
-    {x:hipX,y:bodyY+.01,radiusY:H*.98*model.haunchScale,radiusZ:W*1.06},
-    {x:-L*.08,y:bodyY+.01,radiusY:H*.88,radiusZ:W*.88},
-    {x:shoulderX,y:bodyY+.08,radiusY:H*1.02*model.chestScale,radiusZ:W*1.02},
-    {x:L*.40,y:bodyY+.15,radiusY:H*.77*neck,radiusZ:W*.77*neck},
-    {x:L*.50,y:bodyY+.22,radiusY:H*.57*neck,radiusZ:W*.58*neck},
-    {x:headX-.18,y:headY-.02,radiusY:.43*skull,radiusZ:.42*skull},
-    {x:headX+.08,y:headY+.02,radiusY:.49*skull,radiusZ:.48*skull},
-    {x:headX+.31,y:headY-.01,radiusY:.39*skull,radiusZ:.42*skull},
-    {x:muzzleX-.10,y:headY-.10,radiusY:.25*model.muzzleScale,radiusZ:.29*skull},
-    {x:muzzleX+.18*model.muzzleScale,y:headY-.11,radiusY:.13*model.muzzleScale,radiusZ:.17*skull},
+    {x:-L*.56,y:bodyY+.03,radiusY:H*.42*model.haunchScale,radiusZ:W*.54*model.pelvisWidth,boneA:0,boneB:0,mix:0},
+    {x:-L*.47,y:bodyY+.00,radiusY:H*.78*model.haunchScale,radiusZ:W*.88*model.pelvisWidth,boneA:0,boneB:0,mix:0},
+    {x:hipX,y:bodyY+.01,radiusY:H*.98*model.haunchScale,radiusZ:W*1.05*model.pelvisWidth,boneA:0,boneB:1,mix:.12},
+    {x:-L*.08,y:bodyY+.01,radiusY:H*.86,radiusZ:W*.86,boneA:0,boneB:1,mix:.86},
+    {x:shoulderX,y:bodyY+.08,radiusY:H*1.02*model.chestScale,radiusZ:W*1.01*model.chestWidth,boneA:1,boneB:2,mix:.86},
+    {x:L*.40,y:bodyY+.15,radiusY:H*.75*neck,radiusZ:W*.74*neck,boneA:2,boneB:3,mix:.58},
+    {x:L*.50,y:bodyY+.22,radiusY:H*.55*neck,radiusZ:W*.55*neck,boneA:3,boneB:4,mix:.18},
+    {x:headX-.18,y:headY-.02,radiusY:.42*skull,radiusZ:.41*skull,boneA:3,boneB:4,mix:.72},
+    {x:headX+.08,y:headY+.02,radiusY:.48*skull,radiusZ:.47*skull,boneA:4,boneB:4,mix:0},
+    {x:headX+.31,y:headY-.01,radiusY:.38*skull,radiusZ:.41*skull,boneA:4,boneB:4,mix:0},
+    {x:muzzleX-.10,y:headY-.10,radiusY:.24*model.muzzleScale,radiusZ:.28*skull,boneA:4,boneB:4,mix:0},
+    {x:muzzleX+.18*model.muzzleScale,y:headY-.11,radiusY:.12*model.muzzleScale,radiusZ:.16*skull,boneA:4,boneB:4,mix:0},
   ]
 
-  const radialSegments=28
+  const radialSegments=30
   const positions:number[]=[]
   const uvs:number[]=[]
+  const skinIndices:number[]=[]
+  const skinWeights:number[]=[]
   const indices:number[]=[]
+
+  const pushSkin=(s:CrossSection)=>{
+    skinIndices.push(s.boneA,s.boneB,0,0)
+    const mix=s.boneA===s.boneB?0:s.mix
+    skinWeights.push(1-mix,mix,0,0)
+  }
 
   for (let i=0;i<sections.length;i++) {
     const s=sections[i]
@@ -65,15 +76,15 @@ export function createFelineCoreGeometry(model: CatModelParams) {
       const c=Math.cos(angle)
       const sin=Math.sin(angle)
 
-      // A cat's underside is flatter than its back. The asymmetry also prevents
-      // the body from reading as a chain of perfect ellipsoids.
-      const verticalScale=c<0?.76:1
-      const dorsalLift=c>0?Math.pow(c,4)*s.radiusY*.055:0
-      const y=s.y+c*s.radiusY*verticalScale+dorsalLift
+      const verticalScale=c<0?.74:1
+      const dorsalLift=c>0?Math.pow(c,4)*s.radiusY*.06:0
+      const ventralTuck=c<-.35?Math.pow(Math.abs(c),3)*s.radiusY*.035:0
+      const y=s.y+c*s.radiusY*verticalScale+dorsalLift+ventralTuck
       const z=sin*s.radiusZ
 
       positions.push(s.x,y,z)
       uvs.push(u,v)
+      pushSkin(s)
     }
   }
 
@@ -88,12 +99,12 @@ export function createFelineCoreGeometry(model: CatModelParams) {
     }
   }
 
-  // Cap the pelvis and nose.
   const addCap=(sectionIndex:number,flip:boolean)=>{
     const s=sections[sectionIndex]
     const center=positions.length/3
     positions.push(s.x,s.y,0)
     uvs.push(sectionIndex===0?0:1,.5)
+    pushSkin(s)
     const base=sectionIndex*ring
     for (let j=0;j<radialSegments;j++) {
       if (flip) indices.push(center,base+j+1,base+j)
@@ -106,6 +117,8 @@ export function createFelineCoreGeometry(model: CatModelParams) {
   const geometry=new THREE.BufferGeometry()
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3))
   geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2))
+  geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinIndices,4))
+  geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinWeights,4))
   geometry.setIndex(indices)
   geometry.computeVertexNormals()
   geometry.computeBoundingSphere()
