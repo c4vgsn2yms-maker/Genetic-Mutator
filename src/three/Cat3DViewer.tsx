@@ -13,10 +13,10 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? '3D BUILD 7.3 · loading real FBX cat'
+          ? '3D BUILD 7.3.1 · loading real FBX cat'
           : loadState==='ready'
-            ? '3D BUILD 7.3 · rigged FBX cat active'
-            : '3D BUILD 7.3 · FBX unavailable'}
+            ? '3D BUILD 7.3.1 · rigged FBX cat active'
+            : '3D BUILD 7.3.1 · FBX unavailable'}
       </div>
 
       <Canvas
