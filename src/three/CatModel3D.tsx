@@ -56,8 +56,8 @@ function ArticulatedLeg({
     if (pawJoint.current) pawJoint.current.rotation.z=pose.paw
   })
 
-  const upperRadius=(hind?.175:.135)*thickness
-  const lowerRadius=(hind?.105:.090)*thickness
+  const upperRadius=(hind?.190:.138)*thickness
+  const lowerRadius=(hind?.098:.088)*thickness
   const pasternRadius=.058*thickness
   const pawForward=hind?.11:.085
 
@@ -90,11 +90,11 @@ function ArticulatedLeg({
             </mesh>
 
             <group ref={pawJoint} position={[pawForward,-pastern,0]}>
-              <mesh scale={[.18*pawScale,.062*thickness,.135*pawScale]} castShadow>
+              <mesh scale={[.20*pawScale,.055*thickness,.125*pawScale]} castShadow>
                 <sphereGeometry args={[1,22,14]} />
                 <meshStandardMaterial {...coatProps} />
               </mesh>
-              <mesh position={[.105*pawScale,-.009,0]} scale={[.060*pawScale,.030,.112*pawScale]}>
+              <mesh position={[.105*pawScale,-.009,0]} scale={[.054*pawScale,.025,.098*pawScale]}>
                 <sphereGeometry args={[1,16,10]} />
                 <meshStandardMaterial color="#4c3a3d" roughness={.92} />
               </mesh>
@@ -157,8 +157,6 @@ export function CatModel3D({
   ageStage?:CatAgeStage
 }) {
   const locomotionRoot=useRef<Group>(null)
-  const leftScapula=useRef<THREE.Mesh>(null)
-  const rightScapula=useRef<THREE.Mesh>(null)
   const leftEarGroup=useRef<Group>(null)
   const rightEarGroup=useRef<Group>(null)
   const jawGroup=useRef<Group>(null)
@@ -216,7 +214,7 @@ export function CatModel3D({
     else skeletonHelper.material.dispose()
   },[skinnedCore,skeletonHelper])
 
-  const leftEar=useMemo(()=>createEarGeometry(.155*model.earScale*model.skullScale,.38*model.earScale,.045),[model.earScale,model.skullScale])
+  const leftEar=useMemo(()=>createEarGeometry(.165*model.earScale*model.skullScale,.34*model.earScale,.050),[model.earScale,model.skullScale])
   const rightEar=useMemo(()=>createEarGeometry(.155*model.earScale*model.skullScale,.38*model.earScale,.045),[model.earScale,model.skullScale])
   const headGeometry=useMemo(()=>createCatHeadGeometry(model),[model])
   const muzzleGeometry=useMemo(()=>createCatMuzzleGeometry(model),[model])
@@ -258,10 +256,6 @@ export function CatModel3D({
       locomotionRoot.current.rotation.x=movement.roll
     }
 
-    const strideRate=gait==='rest'?.35:gait==='idle'?.72:gait==='walk'?1.3:gait==='trot'?2.0:2.8
-    const scapulaShift=Math.sin(t*strideRate+(animal.seed%23))*(gait==='idle'?.014:gait==='walk'?.035:gait==='trot'?.052:.070)
-    if (leftScapula.current) leftScapula.current.position.x=shoulderX-.02+scapulaShift
-    if (rightScapula.current) rightScapula.current.position.x=shoulderX-.02-scapulaShift
   })
 
   const coatProps:CoatProps={
@@ -287,20 +281,15 @@ export function CatModel3D({
         <primitive object={skinnedCore.mesh} />
         <primitive object={skeletonHelper} />
 
-        <mesh ref={leftScapula} position={[shoulderX-.02,bodyY+.42,legZ*.72]} rotation={[0,.05,-.28]} scale={[.245*model.limbThickness,.085,.145]} castShadow>
-          <sphereGeometry args={[1,22,14]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
-        <mesh ref={rightScapula} position={[shoulderX-.02,bodyY+.42,-legZ*.72]} rotation={[0,-.05,-.28]} scale={[.30*model.limbThickness,.105,.18]} castShadow>
-          <sphereGeometry args={[1,22,14]} />
-          <meshStandardMaterial {...coatProps} />
-        </mesh>
-
         <group ref={headGroup} position={[0,0,0]}>
           <mesh geometry={headGeometry} position={[headX,headY,0]} castShadow receiveShadow>
             <meshStandardMaterial {...coatProps} />
           </mesh>
           <mesh geometry={muzzleGeometry} position={[muzzleCenterX,headY-.105,0]} castShadow>
+            <meshStandardMaterial {...coatProps} />
+          </mesh>
+          <mesh position={[headX+.205*model.headLength,headY-.035,0]} scale={[.105,.095,.135*model.skullScale]} castShadow>
+            <sphereGeometry args={[1,24,16]} />
             <meshStandardMaterial {...coatProps} />
           </mesh>
 
@@ -329,8 +318,8 @@ export function CatModel3D({
             <meshPhysicalMaterial color={noseColor} roughness={.38} clearcoat={.34} />
           </mesh>
 
-          <group ref={jawGroup} position={[muzzleCenterX+.025,headY-.165,0]}>
-            <mesh position={[.03,0,0]} scale={[.115,.044,.118]}>
+          <group ref={jawGroup} position={[muzzleCenterX+.015,headY-.155,0]}>
+            <mesh position={[.03,0,0]} scale={[.102,.040,.108]}>
               <sphereGeometry args={[1,20,12]} />
               <meshStandardMaterial color={albino?'#e6d2cf':animal.phenotype.coatHex} roughness={.88} />
             </mesh>
@@ -346,9 +335,13 @@ export function CatModel3D({
 
         <ArticulatedLeg x={shoulderX+.02} z={legZ} rootY={bodyY+.035} side={1} length={model.legLength} bodyLength={model.bodyLength} pawScale={model.pawScale} thickness={model.limbThickness} coatProps={coatProps} gait={gait} />
         <ArticulatedLeg x={shoulderX+.02} z={-legZ} rootY={bodyY+.035} side={-1} length={model.legLength} bodyLength={model.bodyLength} pawScale={model.pawScale} thickness={model.limbThickness} coatProps={coatProps} gait={gait} />
-        <ArticulatedLeg x={hipX-.015} z={legZ} rootY={bodyY+.05} side={1} length={model.legLength*.98} bodyLength={model.bodyLength} pawScale={model.pawScale*1.08} thickness={model.limbThickness*1.06} coatProps={coatProps} gait={gait} hind />
-        <ArticulatedLeg x={hipX-.015} z={-legZ} rootY={bodyY+.05} side={-1} length={model.legLength*.98} bodyLength={model.bodyLength} pawScale={model.pawScale*1.08} thickness={model.limbThickness*1.06} coatProps={coatProps} gait={gait} hind />
+        <ArticulatedLeg x={hipX-.015} z={legZ} rootY={bodyY+.05} side={1} length={model.legLength*.98} bodyLength={model.bodyLength} pawScale={model.pawScale*1.03} thickness={model.limbThickness*1.08} coatProps={coatProps} gait={gait} hind />
+        <ArticulatedLeg x={hipX-.015} z={-legZ} rootY={bodyY+.05} side={-1} length={model.legLength*.98} bodyLength={model.bodyLength} pawScale={model.pawScale*1.03} thickness={model.limbThickness*1.08} coatProps={coatProps} gait={gait} hind />
 
+        <mesh position={[tailStart+.07,bodyY+.075,0]} scale={[.17,.105,.115]} castShadow>
+          <sphereGeometry args={[1,22,14]} />
+          <meshStandardMaterial {...coatProps} />
+        </mesh>
         <group ref={tailGroup} position={[tailStart,bodyY+.08,0]}>
           <mesh geometry={tailGeometry} castShadow>
             <meshStandardMaterial {...coatProps} />
