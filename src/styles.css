@@ -28,7 +28,17 @@ button { cursor: pointer; }
 .stat-strip strong { font-size:1.08rem; overflow-wrap:anywhere; }
 .main-grid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,.78fr); gap:18px; align-items:start; }
 .panel { background:rgba(17,22,28,.92); border:1px solid #272f38; border-radius:16px; padding:18px; }
-.viewer-panel { min-height:580px; display:flex; flex-direction:column; justify-content:center; }
+.viewer-panel { min-height:680px; display:flex; flex-direction:column; justify-content:center; }
+.viewer-3d-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.viewer-3d-heading div { display:grid; gap:3px; }
+.viewer-3d-heading span { color:#8eb9a7; font-size:.69rem; font-weight:850; letter-spacing:.13em; }
+.viewer-3d-heading strong { font-size:1.15rem; }
+.viewer-3d-heading small { color:#74808c; font-size:.72rem; }
+.viewer-3d-shell { height:440px; border-radius:13px; overflow:hidden; position:relative; border:1px solid #252e37; background:#0d1217; touch-action:none; }
+.viewer-3d-shell canvas { display:block; width:100%; height:100%; }
+.viewer-3d-hint { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); padding:6px 9px; border-radius:999px; background:rgba(7,10,13,.72); border:1px solid rgba(255,255,255,.08); color:#95a0aa; font-size:.68rem; pointer-events:none; white-space:nowrap; backdrop-filter:blur(7px); }
+.viewer-3d-fallback { border:1px solid #343d47; border-radius:13px; background:#0d1116; padding:10px; }
+.viewer-3d-fallback p { margin:8px 7px 2px; color:#9ba5af; font-size:.78rem; line-height:1.45; }
 .cat-preview { width:100%; }
 .cat-preview svg { display:block; width:100%; max-height:420px; }
 .cat-preview.compact svg { max-height:125px; }
@@ -66,6 +76,7 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
 @media (max-width: 920px) {
   .main-grid { grid-template-columns:1fr; }
   .viewer-panel { min-height:unset; }
+  .viewer-3d-shell { height:390px; }
   .stat-strip { grid-template-columns:repeat(2,1fr); }
   .topbar { align-items:flex-start; flex-direction:column; }
   .status { max-width:100%; text-align:left; }
@@ -77,4 +88,6 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
   .animal-facts { grid-template-columns:1fr 1fr; }
   .two-col { grid-template-columns:1fr; gap:0; }
   .header-actions { width:100%; justify-content:space-between; }
+  .viewer-3d-shell { height:330px; }
+  .viewer-3d-heading { align-items:flex-start; flex-direction:column; gap:5px; }
 }
