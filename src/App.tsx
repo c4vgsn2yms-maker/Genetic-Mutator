@@ -277,7 +277,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.4.1 visible eyes + pigment epistasis fix</small>
+                <small>Phase 7.4.2 corrected visible eye placement</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
