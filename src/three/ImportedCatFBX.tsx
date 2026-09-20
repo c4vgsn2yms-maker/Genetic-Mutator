@@ -5,7 +5,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
-import { coatRoughness, createCoatTexture } from './catMaterial'
+import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
 
 const CAT_FBX_URL =
   'https://raw.githubusercontent.com/nrz/ylikuutio/adcb264480542b2a6ca16cedbd1afecc605cb2d6/res/objects/www.blendswap.com/86110_rigged_and_animated_cat/cat.fbx'
@@ -27,7 +27,15 @@ export function ImportedCatFBX({
   const [source,setSource]=useState<Group|null>(null)
   const [error,setError]=useState<string|null>(null)
   const mixerRef=useRef<THREE.AnimationMixer|null>(null)
-  const coatTexture=useMemo(()=>createCoatTexture(animal),[
+  const appearance=useMemo(()=>resolveVisibleAppearance(animal),[
+    animal.phenotype.coatHex,
+    animal.phenotype.patternHex,
+    animal.phenotype.pattern,
+    animal.phenotype.whiteFraction,
+    animal.phenotype.mutationLabels.join('|'),
+    appearance,
+  ])
+  const coatTexture=useMemo(()=>createCoatTexture(animal,appearance),[
     animal.id,
     animal.seed,
     animal.phenotype.coatHex,
@@ -98,7 +106,16 @@ export function ImportedCatFBX({
     const clone=SkeletonUtils.clone(source) as Group
 
     const roughness=coatRoughness(animal)
-    const tint=new THREE.Color(animal.phenotype.coatHex)
+
+    const materialRole=(meshName:string,materialName:string)=>{
+      const name=`${meshName} ${materialName}`.toLowerCase()
+      if (/eye|iris|cornea|pupil/.test(name)) return 'eye'
+      if (/nose|snoutskin|muzzle_skin/.test(name)) return 'nose'
+      if (/pad|pawpad|toe_pad|footpad/.test(name)) return 'pad'
+      if (/inner.?ear|ear.?inner|earskin/.test(name)) return 'ear'
+      if (/skin|mouth|lip|gum/.test(name)) return 'skin'
+      return 'coat'
+    }
 
     clone.traverse(child=>{
       const mesh=child as Mesh
@@ -106,17 +123,41 @@ export function ImportedCatFBX({
 
       const apply=(mat:Material)=>{
         const m=mat as MeshStandardMaterial
+        const role=materialRole(mesh.name,m.name || '')
         if ('color' in m && m.color) {
-          if (m.map) {
-            // Keep authored shading/detail while letting genetics influence coat tone.
-            m.color.copy(tint).lerp(new THREE.Color('#ffffff'),.42)
+          if (role==='eye') {
+            m.color.set(appearance.eyeColor)
+            if ('roughness' in m) m.roughness=.18
+            if ('metalness' in m) m.metalness=0
+          } else if (role==='nose') {
+            m.color.set(appearance.noseColor)
+            if ('roughness' in m) m.roughness=.38
+            if ('metalness' in m) m.metalness=0
+          } else if (role==='pad') {
+            m.color.set(appearance.pawPadColor)
+            if ('roughness' in m) m.roughness=.72
+            if ('metalness' in m) m.metalness=0
+          } else if (role==='ear') {
+            m.color.set(appearance.earInnerColor)
+            if ('roughness' in m) m.roughness=.72
+            if ('metalness' in m) m.metalness=0
+          } else if (role==='skin') {
+            m.color.set(appearance.skinColor)
+            if ('roughness' in m) m.roughness=.66
+            if ('metalness' in m) m.metalness=0
           } else {
-            m.color.copy(tint)
-            if (coatTexture && mesh.geometry.getAttribute('uv')) m.map=coatTexture
+            // The imported mesh supplies the anatomy and rig. The generated
+            // texture supplies the animal-specific inherited coat phenotype.
+            if (coatTexture && mesh.geometry.getAttribute('uv')) {
+              m.map=coatTexture
+              m.color.set('#ffffff')
+            } else {
+              m.color.set(appearance.baseCoatColor)
+            }
+            if ('roughness' in m) m.roughness=roughness
+            if ('metalness' in m) m.metalness=0
           }
         }
-        if ('roughness' in m) m.roughness=roughness
-        if ('metalness' in m) m.metalness=0
         m.side=THREE.DoubleSide
         m.needsUpdate=true
       }
@@ -126,7 +167,7 @@ export function ImportedCatFBX({
     })
 
     return clone
-  },[source,animal,coatTexture])
+  },[source,animal,coatTexture,appearance])
 
   useEffect(()=>{
     if (!display) return
