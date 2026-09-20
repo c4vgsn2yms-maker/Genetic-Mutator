@@ -30,7 +30,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
   if (!webgl) {
     return (
       <div className="viewer-3d-fallback">
-        <div className="render-status unavailable">3D BUILD 5.0 · WebGL unavailable</div>
+        <div className="render-status unavailable">3D BUILD 5.1 · WebGL unavailable</div>
         <CatPreview animal={animal} />
         <p>Your browser could not create a WebGL context, so the lightweight 2D phenotype preview is being shown instead. If hardware acceleration is disabled, enabling it may allow the 3D model to load.</p>
       </div>
@@ -39,7 +39,7 @@ export function Cat3DViewer({animal}:{animal:Individual}) {
 
   return (
     <div className="viewer-3d-shell">
-      <div className="render-status active">3D BUILD 5.0 · habitat + anatomy rig</div>
+      <div className="render-status active">3D BUILD 5.1 · habitat + anatomy rig</div>
       <div className="gait-controls" aria-label="3D animation preview">
         {GAITS.map(name=>(
           <button key={name} className={gait===name?'active':''} onClick={()=>setGait(name)}>
