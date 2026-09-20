@@ -17,6 +17,101 @@ function cloneMaterial(material:Material):Material {
   return material.clone()
 }
 
+function attachVisibleEyes(root:Group,eyeColor:string) {
+  let headBone:THREE.Bone|null=null
+  let bestScore=-1
+
+  root.traverse(object=>{
+    const bone=object as THREE.Bone
+    if (!bone.isBone) return
+    const name=bone.name.toLowerCase()
+    const score=/head/.test(name)?4:/skull/.test(name)?3:/cranium/.test(name)?2:-1
+    if (score>bestScore) {
+      bestScore=score
+      headBone=bone
+    }
+  })
+
+  if (!headBone) return
+
+  root.updateMatrixWorld(true)
+  const box=new THREE.Box3().setFromObject(root)
+  const size=box.getSize(new THREE.Vector3())
+  const center=box.getCenter(new THREE.Vector3())
+  const headWorld=(headBone as THREE.Bone).getWorldPosition(new THREE.Vector3())
+
+  const forward=headWorld.clone().sub(center)
+  forward.y=0
+  if (forward.lengthSq()<1e-5) forward.set(1,0,0)
+  forward.normalize()
+
+  const up=new THREE.Vector3(0,1,0)
+  const lateral=new THREE.Vector3().crossVectors(up,forward).normalize()
+  const height=Math.max(.5,size.y)
+  const eyeRadius=clamp(height*.032,.035,.070)
+  const eyeForward=height*.072
+  const eyeUp=height*.040
+  const eyeSide=height*.052
+
+  const rootScale=root.getWorldScale(new THREE.Vector3())
+  const scaleFix=Math.max(.0001,(rootScale.x+rootScale.y+rootScale.z)/3)
+  const localRadius=eyeRadius/scaleFix
+
+  for (const side of [-1,1]) {
+    const worldPos=headWorld.clone()
+      .addScaledVector(forward,eyeForward)
+      .addScaledVector(up,eyeUp)
+      .addScaledVector(lateral,eyeSide*side)
+
+    const localPos=root.worldToLocal(worldPos.clone())
+    const localForwardPoint=root.worldToLocal(worldPos.clone().add(forward))
+    const localForward=localForwardPoint.sub(localPos).normalize()
+
+    const eyeGroup=new THREE.Group()
+    eyeGroup.name=`GeneratedVisibleEye_${side<0?'L':'R'}`
+    eyeGroup.userData.generatedEye=true
+    eyeGroup.position.copy(localPos)
+    eyeGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),localForward)
+    eyeGroup.scale.setScalar(localRadius)
+
+    const globe=new THREE.Mesh(
+      new THREE.SphereGeometry(1,24,16),
+      new THREE.MeshStandardMaterial({
+        color:new THREE.Color(eyeColor),
+        roughness:.18,
+        metalness:0,
+      }),
+    )
+    globe.userData.generatedEye=true
+    eyeGroup.add(globe)
+
+    const pupil=new THREE.Mesh(
+      new THREE.SphereGeometry(.34,18,12),
+      new THREE.MeshStandardMaterial({
+        color:'#050607',
+        roughness:.22,
+        metalness:0,
+      }),
+    )
+    pupil.position.set(0,0,.91)
+    pupil.scale.set(.52,1,.28)
+    pupil.userData.generatedEye=true
+    eyeGroup.add(pupil)
+
+    const glint=new THREE.Mesh(
+      new THREE.SphereGeometry(.10,12,8),
+      new THREE.MeshBasicMaterial({color:'#ffffff'}),
+    )
+    glint.position.set(.18,.18,.96)
+    glint.userData.generatedEye=true
+    eyeGroup.add(glint)
+
+    root.add(eyeGroup)
+    root.updateMatrixWorld(true)
+    ;(headBone as THREE.Bone).attach(eyeGroup)
+  }
+}
+
 export function ImportedCatFBX({
   animal,
   onLoadState,
@@ -171,6 +266,11 @@ export function ImportedCatFBX({
       else if (mesh.material) apply(mesh.material)
     })
 
+    // Some versions of this FBX render the original eyes too dark or too
+    // deeply recessed to read. Add glossy, head-bone-attached eyes so every
+    // phenotype has clearly visible eyeballs and mutation-aware eye color.
+    attachVisibleEyes(clone,appearance.eyeColor)
+
     return clone
   },[source,animal,coatTexture,appearance])
 
@@ -207,6 +307,7 @@ export function ImportedCatFBX({
       if (!mesh.isMesh) return
       if (Array.isArray(mesh.material)) mesh.material.forEach(m=>m.dispose())
       else mesh.material?.dispose()
+      if (mesh.userData.generatedEye) mesh.geometry.dispose()
     })
   },[display])
 
