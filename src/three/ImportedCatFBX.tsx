@@ -113,7 +113,10 @@ export function ImportedCatFBX({
       if (/nose|snoutskin|muzzle_skin/.test(name)) return 'nose'
       if (/pad|pawpad|toe_pad|footpad/.test(name)) return 'pad'
       if (/inner.?ear|ear.?inner|earskin/.test(name)) return 'ear'
-      if (/skin|mouth|lip|gum/.test(name)) return 'skin'
+      // Do not classify generic "skin" as exposed skin. Many animal FBX
+      // exporters call the entire skinned body material "skin", which would
+      // otherwise bypass the inherited coat texture.
+      if (/mouth|lip|gum|tongue/.test(name)) return 'skin'
       return 'coat'
     }
 
@@ -148,12 +151,14 @@ export function ImportedCatFBX({
           } else {
             // The imported mesh supplies the anatomy and rig. The generated
             // texture supplies the animal-specific inherited coat phenotype.
-            if (coatTexture && mesh.geometry.getAttribute('uv')) {
-              m.map=coatTexture
-              m.color.set('#ffffff')
-            } else {
-              m.color.set(appearance.baseCoatColor)
+            const hasUv=Boolean(mesh.geometry.getAttribute('uv'))
+            if ('map' in m) {
+              // Never allow the FBX's original brown diffuse map to multiply
+              // over leucism/albinism/piebald or any other inherited coat.
+              m.map=coatTexture && hasUv ? coatTexture : null
             }
+            if ('vertexColors' in m) m.vertexColors=false
+            m.color.set(coatTexture && hasUv ? '#ffffff' : appearance.baseCoatColor)
             if ('roughness' in m) m.roughness=roughness
             if ('metalness' in m) m.metalness=0
           }
