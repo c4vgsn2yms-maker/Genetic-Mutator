@@ -1,6 +1,9 @@
 export type Sex = 'male' | 'female'
 
 export type MutationKey = 'melanism' | 'albinism' | 'leucism' | 'piebald'
+export type CoatPattern = 'solid' | 'spotted' | 'rosetted'
+export type EarShape = 'rounded' | 'balanced' | 'pointed'
+export type TerrainType = 'open' | 'forest' | 'rocky' | 'wetland'
 
 export type GenePair = [number, number]
 
@@ -14,6 +17,9 @@ export interface Genome {
   legLength: GenePair
   skullWidth: GenePair
   muzzleLength: GenePair
+  canineLength: GenePair
+  earSize: GenePair
+  earShape: GenePair
   tailLength: GenePair
   furLength: GenePair
   pigmentWarmth: GenePair
@@ -35,11 +41,14 @@ export interface Phenotype {
   legRatio: number
   skullWidth: number
   muzzleLength: number
+  canineLengthCm: number
+  earSize: number
+  earShape: EarShape
   tailLengthCm: number
   furLength: number
   coatName: string
   coatHex: string
-  pattern: 'solid' | 'spotted' | 'rosetted'
+  pattern: CoatPattern
   patternDensity: number
   patternHex: string
   whiteFraction: number
@@ -61,6 +70,16 @@ export interface Individual {
   createdAt: string
 }
 
+export interface EnvironmentSettings {
+  name: string
+  temperatureC: number
+  terrain: TerrainType
+  foodAvailability: number
+  preySpeed: number
+  coverDensity: number
+  selectionStrength: number
+}
+
 export interface SimulationState {
   individuals: Individual[]
   selectedMotherId?: string
@@ -68,4 +87,5 @@ export interface SimulationState {
   units: 'imperial' | 'metric'
   lineage: string
   currentGeneration: number
+  environment: EnvironmentSettings
 }
