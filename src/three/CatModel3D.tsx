@@ -107,42 +107,39 @@ export function CatModel3D({animal}:{animal:Individual}) {
 
   useEffect(()=>()=>tailGeometry.dispose(),[tailGeometry])
 
-  const coatMaterial=(extra?:Partial<JSX.IntrinsicElements['meshStandardMaterial']>)=>(
-    <meshStandardMaterial
-      map={coatTexture ?? undefined}
-      color={coatTexture?'white':animal.phenotype.coatHex}
-      roughness={roughness}
-      metalness={0}
-      {...extra}
-    />
-  )
+  const coatProps = {
+    map: coatTexture ?? undefined,
+    color: coatTexture ? 'white' : animal.phenotype.coatHex,
+    roughness,
+    metalness: 0,
+  }
 
   return (
     <group scale={model.overallScale}>
       <group ref={root}>
         <mesh position={[0,bodyY,0]} scale={[bodyX*.52,model.bodyHeight,model.bodyWidth]} castShadow receiveShadow>
           <sphereGeometry args={[1,40,26]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <mesh position={[shoulderX,bodyY+.05,0]} scale={[.62*model.chestScale,model.bodyHeight*.93,model.bodyWidth*1.02]} castShadow>
           <sphereGeometry args={[1,28,20]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <mesh position={[hipX-.10,bodyY-.01,0]} scale={[.68*model.haunchScale,model.bodyHeight*.98,model.bodyWidth*1.06]} castShadow>
           <sphereGeometry args={[1,28,20]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <mesh position={[bodyX*.40,bodyY+.10,0]} scale={[.52*model.neckScale,.53*model.neckScale,.48*model.neckScale]} rotation={[0,0,-.22]} castShadow>
           <sphereGeometry args={[1,28,20]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <mesh position={[headX,headY,0]} scale={[.50,headH,headW]} castShadow>
           <sphereGeometry args={[1,36,24]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <mesh position={[muzzleX,headY-.12,.12]} scale={[.29*model.muzzleScale,.20,.20]} castShadow>
@@ -161,11 +158,11 @@ export function CatModel3D({animal}:{animal:Individual}) {
 
         <mesh position={[headX-.06,headY+.54,.29]} rotation={[0,0,.05]} scale={[model.earScale,model.earScale,model.earScale]} castShadow>
           <coneGeometry args={[.22,.58,3]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
         <mesh position={[headX-.06,headY+.54,-.29]} rotation={[0,0,.05]} scale={[model.earScale,model.earScale,model.earScale]} castShadow>
           <coneGeometry args={[.22,.58,3]} />
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
 
         <Eye x={headX+.36} y={headY+.10} z={.27} />
@@ -177,7 +174,7 @@ export function CatModel3D({animal}:{animal:Individual}) {
         <Leg x={hipX} z={-legZ} length={model.legLength*.96} pawScale={model.pawScale*1.08} coatTexture={coatTexture} roughness={roughness} hind />
 
         <mesh geometry={tailGeometry} castShadow>
-          {coatMaterial()}
+          <meshStandardMaterial {...coatProps} />
         </mesh>
       </group>
     </group>
