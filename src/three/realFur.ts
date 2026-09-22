@@ -319,6 +319,7 @@ function groomDirection(
   longAxis:THREE.Vector3,
   layFlatness:number,
   furWire:number,
+  layerName:FurLayer['name'],
   out:THREE.Vector3,
 ) {
   const center=box.getCenter(new THREE.Vector3())
@@ -347,7 +348,17 @@ function groomDirection(
   }
 
   const tangent=projectedTangent(flow,normal,longAxis,new THREE.Vector3())
-  const standOff=clamp(1-layFlatness+furWire*.22,.04,.78)
+  // Phase 8.8.1 balance pass: keep the inherited lay direction, but never
+  // collapse every strand into a nearly tangent ribbon. A small minimum
+  // stand-off preserves readable individual hairs while the coat still
+  // follows the body instead of reverting to the old porcupine look.
+  const layerBase=layerName==='guard' ? .18 : .11
+  const layerMax=layerName==='guard' ? .64 : .48
+  const standOff=clamp(
+    layerBase+(1-layFlatness)*.46+furWire*.14,
+    layerBase,
+    layerMax,
+  )
   out.copy(tangent).multiplyScalar(1-standOff).addScaledVector(normal,standOff).normalize()
   return out
 }
@@ -373,7 +384,7 @@ function buildFurGeometry(
     phenotype.furCurlStrength*.10+
     phenotype.furWireStrength*.08-
     phenotype.furLayFlatness*.08
-  const baseLength=diagonal*(.0028+furLength*.0085)*speciesFactor*layer.lengthScale*textureLift
+  const baseLength=diagonal*(.0030+furLength*.0093)*speciesFactor*layer.lengthScale*textureLift
   const maxBend=baseLength*(layer.name==='guard'?.80:.48)
   const segments=layer.name==='guard' ? 2 : 1
   const vertexPerSegment=6
@@ -483,6 +494,10 @@ function buildFurGeometry(
     if (Math.abs(longNorm)>.88) regionLengthScale*=.72
     if (yNorm<.16) regionLengthScale*=.70
 
+    projectedTangent(longAxis,n,tangent,flowTangent)
+    bitangent.crossVectors(n,flowTangent).normalize()
+    if (bitangent.lengthSq()<1e-8) bitangent.set(0,0,1)
+
     groomDirection(
       sample,
       box,
@@ -491,12 +506,19 @@ function buildFurGeometry(
       longAxis,
       phenotype.furLayFlatness,
       phenotype.furWireStrength,
+      layer.name,
       hairDirection,
     )
 
-    projectedTangent(longAxis,n,tangent,flowTangent)
-    bitangent.crossVectors(n,flowTangent).normalize()
-    if (bitangent.lengthSq()<1e-8) bitangent.set(0,0,1)
+    // Avoid the "combed grooves" regression where thousands of neighboring
+    // hairs shared almost exactly the same direction. The jitter is small
+    // enough to retain grooming, but large enough to read as separate fibers.
+    const directionJitter=(rng()-.5)*(layer.name==='guard'?.22:.10)
+    const lateralJitter=(rng()-.5)*(layer.name==='guard'?.16:.07)
+    hairDirection
+      .addScaledVector(flowTangent,directionJitter)
+      .addScaledVector(bitangent,lateralJitter)
+      .normalize()
 
     const length=baseLength*(.78+rng()*.38)*regionLengthScale
     const thicknessGene=clamp(
@@ -505,8 +527,21 @@ function buildFurGeometry(
       phenotype.furWireStrength*.18,
       0,1,
     )
-    const width=length*(.0085+rng()*.0055)*(layer.widthScale*(.55+thicknessGene*.70))
-    const lift=length*.0035
+    // The Phase 8.8 strands became sub-pixel thin on phones, so the coat
+    // visually collapsed back into a ribbed surface. Keep the geometry thin,
+    // but apply a modest screen-readability boost while still letting the
+    // thickness genes control the result.
+    const mobileWidthBoost=
+      typeof navigator!=='undefined' && /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent)
+        ? 1.22
+        : 1
+    const width=
+      length*
+      (.015+rng()*.009)*
+      layer.widthScale*
+      (.72+thicknessGene*.72)*
+      mobileWidthBoost
+    const lift=length*.0045
     const phase=rng()*Math.PI*2
     const waveAmp=length*(.02+.12*phenotype.furWaveStrength)*(layer.name==='guard'?1:.35)
     const curlAmp=length*(.02+.16*phenotype.furCurlStrength)*(layer.name==='guard'?1:.25)
@@ -641,7 +676,14 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       : 43000+densityNorm*27000+furLength*13000
   )*lodScale)
 
-  const guardFraction=clamp(.10+.06*(1-animal.phenotype.undercoatDepth)+.04*animal.phenotype.furWireStrength,.08,.20)
+  const guardFraction=clamp(
+    .12+
+    .07*(1-animal.phenotype.undercoatDepth)+
+    .05*animal.phenotype.furWireStrength+
+    .02*animal.phenotype.furCoarseness,
+    .10,
+    .24,
+  )
   const totalGuard=Math.max(2800,Math.round(targetTotal*guardFraction))
   const totalUndercoat=Math.max(6000,targetTotal-totalGuard)
 
@@ -677,7 +719,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:.92+.38*animal.phenotype.furCoarseness+.22*animal.phenotype.furCurlStrength,
+        lengthScale:1.12+.40*animal.phenotype.furCoarseness+.24*animal.phenotype.furCurlStrength,
         widthScale:.22+.18*animal.phenotype.guardHairThickness,
         leanScale:.08+.18*animal.phenotype.furWireStrength+.10*animal.phenotype.furWaveStrength,
         physicsStrength:.82+.30*(1-animal.phenotype.guardHairStiffness)+.18*animal.phenotype.furCurlStrength,
