@@ -14,7 +14,7 @@ import type {
 const LOCI: (keyof Genome)[] = [
   'sizePotential','growthDuration','boneMass','muscleMass','shoulderHeight',
   'bodyLength','legLength','skullWidth','muzzleLength','canineLength','earSize',
-  'earShape','tailLength','furLength','pigmentWarmth','pigmentIntensity',
+  'earShape','tailLength','furLength','furDensity','pigmentWarmth','pigmentIntensity',
   'dilution','silver','rosette','patternDensity','melanism','albinism',
   'leucism','piebald'
 ]
@@ -93,6 +93,7 @@ export function upgradeGenome(input: Partial<Genome> | Genome): Genome {
     earShape:normalizePair(input.earShape,[.58,.58]),
     tailLength:normalizePair(input.tailLength,[.68,.68]),
     furLength:normalizePair(input.furLength,[.45,.45]),
+    furDensity:normalizePair(input.furDensity,input.furLength ? normalizePair(input.furLength,[.55,.55]) : [.55,.55]),
     pigmentWarmth:normalizePair(input.pigmentWarmth,[.50,.50]),
     pigmentIntensity:normalizePair(input.pigmentIntensity,[.68,.68]),
     dilution:normalizePair(input.dilution,[.22,.22]),
@@ -229,6 +230,9 @@ export function createFounder(
     earShape:pair(shapeGene(options.earShape),.06,r),
     tailLength: pair(options.tailLength,.08,r),
     furLength: pair(options.furLength,.08,r),
+    // Fur density is independent from strand length but starts with a mild
+    // founder correlation. The locus then recombines/mutates normally.
+    furDensity: pair(Math.max(.12,Math.min(.95,.48+p.fur*.34+(species==='fox'?.08:0))),.12,r),
     pigmentWarmth: pair((p.warmth+colorBias)/2,.16,r),
     pigmentIntensity: pair(p.intensity,.16,r),
     dilution: pair(p.dilution,.14,r),
@@ -386,6 +390,7 @@ export function calculatePhenotype(
     earShape:earShapeFromGene(avg(g.earShape)),
     tailLengthCm: finite(tailLengthCm,species==='fox'?40:30),
     furLength: avg(g.furLength),
+    furDensityPerSqIn: Math.round(60000 + 60000 * avg(g.furDensity)),
     coatName,
     coatHex,
     pattern,
