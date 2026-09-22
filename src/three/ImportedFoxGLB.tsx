@@ -7,6 +7,7 @@ import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
 import { attachRealFur } from './realFur'
+import { smoothCreatureSurface } from './surfaceFinish'
 
 const FOX_GLB_URL =
   'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb'
@@ -109,6 +110,13 @@ export function ImportedFoxGLB({
     if (!source) return null
     const clone=SkeletonUtils.clone(source) as Group
     const roughness=coatRoughness(animal)
+
+    clone.traverse(child=>{
+      const mesh=child as Mesh
+      if (!mesh.isMesh) return
+      smoothCreatureSurface(mesh)
+    })
+
     const mutationVisible=animal.phenotype.mutationLabels.length>0
     const nonRedMorph=/winter white|silver fox|black-silver/i.test(animal.phenotype.coatName)
     const preserveAuthoredTexture=!mutationVisible && !nonRedMorph
