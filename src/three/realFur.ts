@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { BufferAttribute, Group, SkinnedMesh, Texture } from 'three'
+import type { BufferAttribute, Group, Mesh, SkinnedMesh, Texture } from 'three'
 import type { Individual } from '../types'
 
 interface FurOptions {
@@ -81,26 +81,36 @@ function component(attribute:BufferAttribute,index:number,slot:number) {
   return attribute.getW(index)
 }
 
-function isEligibleBodyMesh(mesh:SkinnedMesh) {
+function isEligibleBodyMesh(mesh:Mesh) {
   const geometry=mesh.geometry
   const name=`${mesh.name} ${mesh.material && !Array.isArray(mesh.material) ? mesh.material.name : ''}`.toLowerCase()
-  if (/eye|iris|pupil|cornea|teeth|tooth|tongue|gum|claw|nail|whisker/.test(name)) return false
+  if (/eye|iris|pupil|cornea|teeth|tooth|tongue|gum|claw|nail|whisker|generatedrealfur/.test(name)) return false
   return Boolean(
+    mesh.isMesh &&
     geometry?.getAttribute('position') &&
     geometry?.getAttribute('normal') &&
-    geometry?.getAttribute('skinIndex') &&
-    geometry?.getAttribute('skinWeight') &&
     geometry.getAttribute('position').count>30
   )
 }
 
-function buildSurfaceSampler(source:SkinnedMesh) {
+function canUseSkinning(source:Mesh):source is SkinnedMesh {
+  const geometry=source.geometry
+  return Boolean(
+    (source as SkinnedMesh).isSkinnedMesh &&
+    geometry?.getAttribute('skinIndex') &&
+    geometry?.getAttribute('skinWeight') &&
+    (source as SkinnedMesh).skeleton
+  )
+}
+
+function buildSurfaceSampler(source:Mesh) {
   const geometry=source.geometry
   const position=geometry.getAttribute('position') as BufferAttribute
   const normal=geometry.getAttribute('normal') as BufferAttribute
   const uv=geometry.getAttribute('uv') as BufferAttribute | undefined
-  const skinIndex=geometry.getAttribute('skinIndex') as BufferAttribute
-  const skinWeight=geometry.getAttribute('skinWeight') as BufferAttribute
+  const skinIndex=geometry.getAttribute('skinIndex') as BufferAttribute | undefined
+  const skinWeight=geometry.getAttribute('skinWeight') as BufferAttribute | undefined
+  const skinned=canUseSkinning(source)
   const index=geometry.index
   const triangleCount=index ? Math.floor(index.count/3) : Math.floor(position.count/3)
 
@@ -181,26 +191,30 @@ function buildSurfaceSampler(source:SkinnedMesh) {
     const sampledU=uv ? uv.getX(ia)*b0+uv.getX(ib)*b1+uv.getX(ic)*b2 : rng()
     const sampledV=uv ? uv.getY(ia)*b0+uv.getY(ib)*b1+uv.getY(ic)*b2 : rng()
 
-    const influences=new Map<number,number>()
-    const addInfluences=(vertex:number,bary:number)=>{
-      for (let slot=0;slot<4;slot++) {
-        const bone=Math.round(component(skinIndex,vertex,slot))
-        const weight=component(skinWeight,vertex,slot)*bary
-        if (weight>1e-6) influences.set(bone,(influences.get(bone)||0)+weight)
-      }
-    }
-    addInfluences(ia,b0)
-    addInfluences(ib,b1)
-    addInfluences(ic,b2)
-
-    const top=[...influences.entries()].sort((x,y)=>y[1]-x[1]).slice(0,4)
-    const sum=Math.max(1e-8,top.reduce((s,item)=>s+item[1],0))
     const sampledIndices:[number,number,number,number]=[0,0,0,0]
-    const sampledWeights:[number,number,number,number]=[0,0,0,0]
-    top.forEach(([bone,weight],slot)=>{
-      sampledIndices[slot]=bone
-      sampledWeights[slot]=weight/sum
-    })
+    const sampledWeights:[number,number,number,number]=[1,0,0,0]
+
+    if (skinned && skinIndex && skinWeight) {
+      const influences=new Map<number,number>()
+      const addInfluences=(vertex:number,bary:number)=>{
+        for (let slot=0;slot<4;slot++) {
+          const bone=Math.round(component(skinIndex,vertex,slot))
+          const weight=component(skinWeight,vertex,slot)*bary
+          if (weight>1e-6) influences.set(bone,(influences.get(bone)||0)+weight)
+        }
+      }
+      addInfluences(ia,b0)
+      addInfluences(ib,b1)
+      addInfluences(ic,b2)
+
+      const top=[...influences.entries()].sort((x,y)=>y[1]-x[1]).slice(0,4)
+      const sum=Math.max(1e-8,top.reduce((s,item)=>s+item[1],0))
+      sampledWeights.fill(0)
+      top.forEach(([bone,weight],slot)=>{
+        sampledIndices[slot]=bone
+        sampledWeights[slot]=weight/sum
+      })
+    }
 
     return {
       position:sampledPosition,
@@ -271,7 +285,7 @@ function createGuidePhysicsState(
 }
 
 function buildFurGeometry(
-  source:SkinnedMesh,
+  source:Mesh,
   layer:FurLayer,
   furLength:number,
   seed:number,
@@ -398,8 +412,10 @@ function buildFurGeometry(
   furGeometry.setAttribute('normal',new THREE.BufferAttribute(normals,3))
   furGeometry.setAttribute('uv',new THREE.BufferAttribute(uvs,2))
   furGeometry.setAttribute('guideUV',new THREE.BufferAttribute(guideUvs,2))
-  furGeometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinIndices,4))
-  furGeometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinWeights,4))
+  if (canUseSkinning(source)) {
+    furGeometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinIndices,4))
+    furGeometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinWeights,4))
+  }
   furGeometry.setAttribute('furFlex',new THREE.Float32BufferAttribute(furFlex,1))
   furGeometry.computeBoundingSphere()
 
@@ -453,12 +469,21 @@ transformed += guideBend * furMaxBend * furFlex;`,
 }
 
 export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptions) {
-  const candidates:SkinnedMesh[]=[]
+  const candidates:Mesh[]=[]
+  let inspectedMeshes=0
+  let skinnedCandidates=0
   root.traverse(object=>{
-    const mesh=object as SkinnedMesh
-    if (!mesh.isSkinnedMesh || mesh.userData.generatedFur) return
-    if (isEligibleBodyMesh(mesh)) candidates.push(mesh)
+    const mesh=object as Mesh
+    if (!mesh.isMesh || mesh.userData.generatedFur) return
+    inspectedMeshes++
+    if (isEligibleBodyMesh(mesh)) {
+      candidates.push(mesh)
+      if (canUseSkinning(mesh)) skinnedCandidates++
+    }
   })
+  root.userData.furInspectedMeshCount=inspectedMeshes
+  root.userData.furCandidateMeshCount=candidates.length
+  root.userData.furSkinnedCandidateCount=skinnedCandidates
   if (!candidates.length) {
     root.userData.generatedFurCount=0
     root.userData.generatedGuideCount=0
@@ -540,20 +565,36 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       createdGuides+=physics.guideCount
 
       const material=createFurMaterial(coatTexture,coatColor,layer,physics)
-      const fur=new THREE.SkinnedMesh(built.geometry,material)
+      let fur:Mesh
+
+      if (canUseSkinning(source)) {
+        const skinnedFur=new THREE.SkinnedMesh(built.geometry,material)
+        skinnedFur.bindMode=source.bindMode
+        skinnedFur.position.copy(source.position)
+        skinnedFur.quaternion.copy(source.quaternion)
+        skinnedFur.scale.copy(source.scale)
+        skinnedFur.bind(source.skeleton,source.bindMatrix.clone())
+        source.parent?.add(skinnedFur)
+        fur=skinnedFur
+      } else {
+        // Fallback for imported meshes that render/animate correctly but do
+        // not expose Three.js skin attributes. Parenting to the source keeps
+        // the complete fur coat attached to the visible body transform.
+        const rigidFur=new THREE.Mesh(built.geometry,material)
+        rigidFur.position.set(0,0,0)
+        rigidFur.quaternion.identity()
+        rigidFur.scale.set(1,1,1)
+        source.add(rigidFur)
+        fur=rigidFur
+      }
+
       fur.name=`GeneratedRealFur_${layer.name}_${source.name || meshIndex}`
       fur.userData.generatedFur=true
       fur.userData.furLayer=layer.name
+      fur.userData.furAttachment=canUseSkinning(source)?'skinned':'rigid-parent'
       fur.castShadow=layer.name==='guard'
       fur.receiveShadow=true
       fur.frustumCulled=false
-      fur.bindMode=source.bindMode
-      fur.position.copy(source.position)
-      fur.quaternion.copy(source.quaternion)
-      fur.scale.copy(source.scale)
-      fur.bind(source.skeleton,source.bindMatrix.clone())
-
-      source.parent?.add(fur)
       created+=layer.count
       if (layer.name==='guard') createdGuard+=layer.count
       else createdUndercoat+=layer.count
