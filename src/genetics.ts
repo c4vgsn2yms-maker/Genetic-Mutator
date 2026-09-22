@@ -2,6 +2,7 @@ import type {
   CoatPattern,
   EarShape,
   EnvironmentSettings,
+  FurTextureLabel,
   GenePair,
   Genome,
   Individual,
@@ -14,7 +15,9 @@ import type {
 const LOCI: (keyof Genome)[] = [
   'sizePotential','growthDuration','boneMass','muscleMass','shoulderHeight',
   'bodyLength','legLength','skullWidth','muzzleLength','canineLength','earSize',
-  'earShape','tailLength','furLength','furDensity','pigmentWarmth','pigmentIntensity',
+  'earShape','tailLength','furLength','furDensity','furCoarseness','furWire','furCurl',
+  'furWave','furSilkiness','furPlushness','furLayFlatness','guardHairThickness',
+  'guardHairStiffness','undercoatDepth','coatGloss','pigmentWarmth','pigmentIntensity',
   'dilution','silver','rosette','patternDensity','melanism','albinism',
   'leucism','piebald'
 ]
@@ -94,6 +97,17 @@ export function upgradeGenome(input: Partial<Genome> | Genome): Genome {
     tailLength:normalizePair(input.tailLength,[.68,.68]),
     furLength:normalizePair(input.furLength,[.45,.45]),
     furDensity:normalizePair(input.furDensity,input.furLength ? normalizePair(input.furLength,[.55,.55]) : [.55,.55]),
+    furCoarseness:normalizePair(input.furCoarseness,[.30,.30]),
+    furWire:normalizePair(input.furWire,[.10,.10]),
+    furCurl:normalizePair(input.furCurl,[.06,.06]),
+    furWave:normalizePair(input.furWave,[.10,.10]),
+    furSilkiness:normalizePair(input.furSilkiness,[.58,.58]),
+    furPlushness:normalizePair(input.furPlushness,input.furLength ? normalizePair(input.furLength,[.42,.42]) : [.42,.42]),
+    furLayFlatness:normalizePair(input.furLayFlatness,[.78,.78]),
+    guardHairThickness:normalizePair(input.guardHairThickness,[.28,.28]),
+    guardHairStiffness:normalizePair(input.guardHairStiffness,[.48,.48]),
+    undercoatDepth:normalizePair(input.undercoatDepth,input.furDensity ? normalizePair(input.furDensity,[.58,.58]) : [.58,.58]),
+    coatGloss:normalizePair(input.coatGloss,[.52,.52]),
     pigmentWarmth:normalizePair(input.pigmentWarmth,[.50,.50]),
     pigmentIntensity:normalizePair(input.pigmentIntensity,[.68,.68]),
     dilution:normalizePair(input.dilution,[.22,.22]),
@@ -115,6 +129,13 @@ export type FounderMutation = 'none' | MutationKey
 export interface FounderCustomization {
   mutations: MutationKey[]
   pattern: 'auto' | CoatPattern
+  furTexture: 'auto' | FurTextureLabel
+  furCoarseness: number
+  furCurl: number
+  furWire: number
+  furLayFlatness: number
+  furPlushness: number
+  coatGloss: number
   furLength: number
   tailLength: number
   bodyLength: number
@@ -166,6 +187,62 @@ function shapeGene(shape:EarShape) {
   return shape==='rounded'?.18:shape==='pointed'?.86:.52
 }
 
+interface FurTextureGenes {
+  coarseness:number
+  wire:number
+  curl:number
+  wave:number
+  silkiness:number
+  plushness:number
+  layFlatness:number
+  thickness:number
+  stiffness:number
+  undercoat:number
+  gloss:number
+}
+
+function defaultTextureForProfile(profile:FounderProfile):FurTextureLabel {
+  if (profile.species==='fox') return profile.fur>.80 ? 'plush' : 'coarse'
+  if (profile.fur>.72) return 'plush'
+  if (profile.fur<.32) return 'smooth'
+  return 'smooth'
+}
+
+function textureGenes(texture:FurTextureLabel):FurTextureGenes {
+  if (texture==='coarse') return {coarseness:.82,wire:.28,curl:.06,wave:.10,silkiness:.18,plushness:.34,layFlatness:.48,thickness:.76,stiffness:.78,undercoat:.48,gloss:.24}
+  if (texture==='wiry') return {coarseness:.88,wire:.92,curl:.12,wave:.20,silkiness:.08,plushness:.20,layFlatness:.30,thickness:.68,stiffness:.94,undercoat:.34,gloss:.16}
+  if (texture==='curly') return {coarseness:.34,wire:.10,curl:.94,wave:.74,silkiness:.40,plushness:.70,layFlatness:.24,thickness:.44,stiffness:.48,undercoat:.72,gloss:.40}
+  if (texture==='wavy') return {coarseness:.30,wire:.08,curl:.48,wave:.88,silkiness:.52,plushness:.56,layFlatness:.46,thickness:.38,stiffness:.40,undercoat:.60,gloss:.50}
+  if (texture==='silky') return {coarseness:.10,wire:.03,curl:.05,wave:.12,silkiness:.96,plushness:.36,layFlatness:.94,thickness:.18,stiffness:.26,undercoat:.42,gloss:.92}
+  if (texture==='plush') return {coarseness:.26,wire:.05,curl:.08,wave:.18,silkiness:.48,plushness:.96,layFlatness:.60,thickness:.34,stiffness:.38,undercoat:.96,gloss:.44}
+  return {coarseness:.20,wire:.04,curl:.04,wave:.08,silkiness:.68,plushness:.36,layFlatness:.90,thickness:.22,stiffness:.34,undercoat:.46,gloss:.66}
+}
+
+function resolveFurTextureLabel(g:Genome):FurTextureLabel {
+  const coarseness=avg(g.furCoarseness)
+  const wire=avg(g.furWire)
+  const curl=avg(g.furCurl)
+  const wave=avg(g.furWave)
+  const silk=avg(g.furSilkiness)
+  const plush=avg(g.furPlushness)
+  const lay=avg(g.furLayFlatness)
+  const thickness=avg(g.guardHairThickness)
+  const undercoat=avg(g.undercoatDepth)
+  const gloss=avg(g.coatGloss)
+
+  const scores:[FurTextureLabel,number][]=[
+    ['wiry',wire*1.25+coarseness*.35+(1-lay)*.18],
+    ['curly',curl*1.20+wave*.22+plush*.12],
+    ['wavy',wave*1.10+curl*.30],
+    ['silky',silk*1.05+gloss*.30+lay*.18],
+    ['plush',plush*1.05+undercoat*.34],
+    ['coarse',coarseness*1.05+thickness*.30],
+    ['smooth',lay*.75+(1-coarseness)*.22+(1-curl)*.16+silk*.14],
+  ]
+  scores.sort((a,b)=>b[1]-a[1])
+  return scores[0][0]
+}
+
 function founderOptions(
   customization:FounderMutation | Partial<FounderCustomization>,
   profile:FounderProfile,
@@ -174,6 +251,13 @@ function founderOptions(
     return {
       mutations:customization==='none'?[]:[customization],
       pattern:'auto',
+      furTexture:defaultTextureForProfile(profile),
+      furCoarseness:textureGenes(defaultTextureForProfile(profile)).coarseness,
+      furCurl:textureGenes(defaultTextureForProfile(profile)).curl,
+      furWire:textureGenes(defaultTextureForProfile(profile)).wire,
+      furLayFlatness:textureGenes(defaultTextureForProfile(profile)).layFlatness,
+      furPlushness:textureGenes(defaultTextureForProfile(profile)).plushness,
+      coatGloss:textureGenes(defaultTextureForProfile(profile)).gloss,
       furLength:profile.fur,
       tailLength:profile.tail,
       bodyLength:profile.length,
@@ -183,9 +267,20 @@ function founderOptions(
       earShape:profile.earShape,
     }
   }
+  const texture=(customization.furTexture && customization.furTexture!=='auto'
+    ? customization.furTexture
+    : defaultTextureForProfile(profile)) as FurTextureLabel
+  const genes=textureGenes(texture)
   return {
     mutations:customization.mutations || [],
     pattern:customization.pattern || 'auto',
+    furTexture:texture,
+    furCoarseness:unitClamp(customization.furCoarseness ?? genes.coarseness),
+    furCurl:unitClamp(customization.furCurl ?? genes.curl),
+    furWire:unitClamp(customization.furWire ?? genes.wire),
+    furLayFlatness:unitClamp(customization.furLayFlatness ?? genes.layFlatness),
+    furPlushness:unitClamp(customization.furPlushness ?? genes.plushness),
+    coatGloss:unitClamp(customization.coatGloss ?? genes.gloss),
     furLength:unitClamp(customization.furLength ?? profile.fur),
     tailLength:unitClamp(customization.tailLength ?? profile.tail),
     bodyLength:unitClamp(customization.bodyLength ?? profile.length),
@@ -209,6 +304,7 @@ export function createFounder(
   const seedText = `${name}-${sex}-${species}-${breed}-${Date.now()}-${Math.random()}`
   const r = rngFromSeed(seedText)
   const options=founderOptions(customization,p)
+  const furTexture=textureGenes(options.furTexture==='auto'?defaultTextureForProfile(p):options.furTexture)
   const patternGene =
     options.pattern==='solid'?.10:
     options.pattern==='spotted'?.48:
@@ -233,6 +329,17 @@ export function createFounder(
     // Fur density is independent from strand length but starts with a mild
     // founder correlation. The locus then recombines/mutates normally.
     furDensity: pair(Math.max(.12,Math.min(.95,.48+p.fur*.34+(species==='fox'?.08:0))),.12,r),
+    furCoarseness:pair(options.furCoarseness,.08,r),
+    furWire:pair(options.furWire,.08,r),
+    furCurl:pair(options.furCurl,.08,r),
+    furWave:pair(furTexture.wave,.08,r),
+    furSilkiness:pair(furTexture.silkiness,.08,r),
+    furPlushness:pair(options.furPlushness,.08,r),
+    furLayFlatness:pair(options.furLayFlatness,.08,r),
+    guardHairThickness:pair(furTexture.thickness,.08,r),
+    guardHairStiffness:pair(furTexture.stiffness,.08,r),
+    undercoatDepth:pair(Math.max(furTexture.undercoat,options.furPlushness*.78),.08,r),
+    coatGloss:pair(options.coatGloss,.08,r),
     pigmentWarmth: pair((p.warmth+colorBias)/2,.16,r),
     pigmentIntensity: pair(p.intensity,.16,r),
     dilution: pair(p.dilution,.14,r),
@@ -391,6 +498,18 @@ export function calculatePhenotype(
     tailLengthCm: finite(tailLengthCm,species==='fox'?40:30),
     furLength: avg(g.furLength),
     furDensityPerSqIn: Math.round(60000 + 60000 * avg(g.furDensity)),
+    furTextureLabel:resolveFurTextureLabel(g),
+    furLayFlatness:avg(g.furLayFlatness),
+    furCoarseness:avg(g.furCoarseness),
+    furCurlStrength:avg(g.furCurl),
+    furWaveStrength:avg(g.furWave),
+    furWireStrength:avg(g.furWire),
+    furSilkiness:avg(g.furSilkiness),
+    furPlushness:avg(g.furPlushness),
+    guardHairThickness:avg(g.guardHairThickness),
+    guardHairStiffness:avg(g.guardHairStiffness),
+    undercoatDepth:avg(g.undercoatDepth),
+    coatGloss:avg(g.coatGloss),
     coatName,
     coatHex,
     pattern,
