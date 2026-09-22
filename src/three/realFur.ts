@@ -59,7 +59,10 @@ function buildFurGeometry(
   const diagonal=Math.max(.001,box.getSize(new THREE.Vector3()).length())
 
   const speciesFactor=source.userData.furSpecies==='fox' ? 1.16 : 1
-  const baseLength=diagonal*(.0042+furLength*.0085)*speciesFactor
+  // The previous fibers were physically present but too small to survive
+  // phone-scale rasterization. Make each strand long/thick enough to break
+  // the silhouette while still reading as fur rather than quills.
+  const baseLength=diagonal*(.010+furLength*.022)*speciesFactor
   const vertexPerHair=12
   const totalVertices=hairCount*vertexPerHair
 
@@ -133,8 +136,8 @@ function buildFurGeometry(
     bitangent.crossVectors(n,tangent).normalize()
 
     const length=baseLength*(.58+rng()*.72)
-    const width=length*(.035+rng()*.018)
-    const lift=length*.035
+    const width=length*(.075+rng()*.035)
+    const lift=length*.060
     const lean=(rng()-.5)*length*.18
     const lean2=(rng()-.5)*length*.18
     const root=p.clone().addScaledVector(n,lift)
@@ -179,8 +182,8 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
 
   const furLength=Math.max(0,Math.min(1,animal.phenotype.furLength))
   const targetTotal=animal.species==='fox'
-    ? Math.round(5200+furLength*4300)
-    : Math.round(4300+furLength*3600)
+    ? Math.round(9000+furLength*7000)
+    : Math.round(7500+furLength*6000)
 
   const totalSourceVertices=candidates.reduce(
     (sum,mesh)=>sum+mesh.geometry.getAttribute('position').count,
@@ -215,7 +218,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
     const fur=new THREE.SkinnedMesh(furGeometry,material)
     fur.name=`GeneratedRealFur_${source.name || meshIndex}`
     fur.userData.generatedFur=true
-    fur.castShadow=false
+    fur.castShadow=true
     fur.receiveShadow=true
     fur.frustumCulled=false
     fur.bindMode=source.bindMode
@@ -228,5 +231,6 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
     created+=usedHairCount
   }
 
+  root.userData.generatedFurCount=created
   return created
 }
