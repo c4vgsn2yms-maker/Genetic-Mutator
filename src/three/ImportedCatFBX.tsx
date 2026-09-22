@@ -7,6 +7,7 @@ import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
 import { createCatLifeController } from './catLife'
+import { attachRealFur } from './realFur'
 
 const CAT_FBX_URL =
   'https://raw.githubusercontent.com/nrz/ylikuutio/adcb264480542b2a6ca16cedbd1afecc605cb2d6/res/objects/www.blendswap.com/86110_rigged_and_animated_cat/cat.fbx'
@@ -323,6 +324,14 @@ export function ImportedCatFBX({
     // phenotype has clearly visible eyeballs and mutation-aware eye color.
     attachVisibleEyes(clone,appearance.eyeColor,appearance.baseCoatColor)
 
+    // Real geometric fur: thousands of tapered, individually skinned fibers
+    // protrude from the body surface and follow the cat skeleton.
+    attachRealFur(clone,{
+      animal,
+      coatTexture,
+      coatColor:appearance.baseCoatColor,
+    })
+
     return clone
   },[source,animal,coatTexture,appearance])
 
@@ -396,7 +405,7 @@ export function ImportedCatFBX({
       if (!mesh.isMesh) return
       if (Array.isArray(mesh.material)) mesh.material.forEach(m=>m.dispose())
       else mesh.material?.dispose()
-      if (mesh.userData.generatedEye) mesh.geometry.dispose()
+      if (mesh.userData.generatedEye || mesh.userData.generatedFur) mesh.geometry.dispose()
     })
   },[display])
 
