@@ -21,9 +21,11 @@ function cloneMaterial(material:Material):Material {
 export function ImportedFoxGLB({
   animal,
   onLoadState,
+  onFurCount,
 }:{
   animal:Individual
   onLoadState?:(state:'loading'|'ready'|'error')=>void
+  onFurCount?:(count:number)=>void
 }) {
   const [source,setSource]=useState<Group|null>(null)
   const [clips,setClips]=useState<THREE.AnimationClip[]>([])
@@ -151,14 +153,15 @@ export function ImportedFoxGLB({
       else if (mesh.material) apply(mesh.material)
     })
 
-    attachRealFur(clone,{
+    const furCount=attachRealFur(clone,{
       animal,
       coatTexture,
       coatColor:appearance.baseCoatColor,
     })
+    onFurCount?.(furCount)
 
     return clone
-  },[source,animal,coatTexture,appearance])
+  },[source,animal,coatTexture,appearance,onFurCount])
 
   useEffect(()=>{
     if (!display || !clips.length) return
