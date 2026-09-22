@@ -229,10 +229,12 @@ function buildSurfaceSampler(source:Mesh) {
 
 function createGuidePhysicsState(
   layer:FurLayer,
-  furLength:number,
+  animal:Individual,
   maxBend:number,
   seed:number,
 ):FurGuidePhysicsState {
+  const furLength=clamp(animal.phenotype.furLength,0,1)
+  const p=animal.phenotype
   const guideCount=layer.guideGridX*layer.guideGridY
   const data=new Uint8Array(guideCount*4)
   const positions=new Float32Array(guideCount*3)
@@ -266,6 +268,9 @@ function createGuidePhysicsState(
   texture.needsUpdate=true
 
   const isGuard=layer.name==='guard'
+  const stiffnessBoost=p.guardHairStiffness*.55+p.furWireStrength*.45+p.furCoarseness*.25
+  const curlSpring=p.furCurlStrength*.22+p.furWaveStrength*.10
+  const silkyDamping=p.furSilkiness*.28+p.furLayFlatness*.20
   return {
     texture,
     data,
@@ -275,21 +280,86 @@ function createGuidePhysicsState(
     guideCount,
     guideGridX:layer.guideGridX,
     guideGridY:layer.guideGridY,
-    stiffness:isGuard ? 18-furLength*6 : 31-furLength*7,
-    damping:isGuard ? 6.1-furLength*1.2 : 9.6-furLength*.8,
-    gravity:isGuard ? .12+furLength*.16 : .055+furLength*.06,
-    wind:isGuard ? .17+furLength*.08 : .07+furLength*.035,
-    inertia:isGuard ? 12.5*layer.physicsStrength : 7.5*layer.physicsStrength,
+    stiffness:isGuard
+      ? 14+stiffnessBoost*16+curlSpring*8-furLength*3
+      : 28+p.furPlushness*10+p.undercoatDepth*8-furLength*4,
+    damping:isGuard
+      ? 5.2+stiffnessBoost*3.2+silkyDamping*2.2
+      : 8.8+p.furPlushness*2.8+silkyDamping*1.8,
+    gravity:isGuard
+      ? .07+furLength*.11+(1-p.furLayFlatness)*.05
+      : .035+furLength*.045,
+    wind:isGuard
+      ? (.11+furLength*.06)*(1-p.guardHairStiffness*.42+p.furCurlStrength*.20)
+      : (.045+furLength*.022)*(1-p.furPlushness*.30),
+    inertia:isGuard
+      ? 9.5*layer.physicsStrength*(1+p.furCurlStrength*.26-p.guardHairStiffness*.24)
+      : 5.5*layer.physicsStrength*(1-p.furPlushness*.18),
     maxBend,
   }
+}
+
+function projectedTangent(
+  flow:THREE.Vector3,
+  normal:THREE.Vector3,
+  fallback:THREE.Vector3,
+  out:THREE.Vector3,
+) {
+  out.copy(flow).addScaledVector(normal,-flow.dot(normal))
+  if (out.lengthSq()<1e-8) out.copy(fallback).addScaledVector(normal,-fallback.dot(normal))
+  if (out.lengthSq()<1e-8) out.set(1,0,0)
+  return out.normalize()
+}
+
+function groomDirection(
+  sample:SurfaceSample,
+  box:THREE.Box3,
+  boxSize:THREE.Vector3,
+  normal:THREE.Vector3,
+  longAxis:THREE.Vector3,
+  layFlatness:number,
+  furWire:number,
+  out:THREE.Vector3,
+) {
+  const center=box.getCenter(new THREE.Vector3())
+  const rel=new THREE.Vector3().subVectors(sample.position,center)
+  const halfLong=Math.max(.001,(Math.abs(longAxis.x)*boxSize.x+Math.abs(longAxis.z)*boxSize.z)*.5)
+  const longitudinal=clamp(rel.dot(longAxis)/halfLong,-1,1)
+  const yNorm=boxSize.y>1e-6 ? clamp((sample.position.y-box.min.y)/boxSize.y,0,1) : .5
+
+  const flow=new THREE.Vector3()
+  if (yNorm<.28) {
+    // Legs and paws: hair runs toward the ground/paw.
+    flow.set(0,-1,0)
+  } else if (yNorm>.72 && Math.abs(longitudinal)>.34) {
+    // Head/cheek/ear zone: sweep backward toward the torso and slightly down.
+    flow.copy(longAxis).multiplyScalar(-Math.sign(longitudinal || 1))
+    flow.y=-.30
+  } else if (Math.abs(longitudinal)>.78) {
+    // Longitudinal extremes (tail/head tips): follow the extremity rather than
+    // exploding outward from the surface normal.
+    flow.copy(longAxis).multiplyScalar(Math.sign(longitudinal || 1))
+    flow.y=-.06
+  } else {
+    // Torso/shoulders/flanks: consistent coat grain along the body.
+    flow.copy(longAxis).multiplyScalar(-1)
+    flow.y=-.10
+  }
+
+  const tangent=projectedTangent(flow,normal,longAxis,new THREE.Vector3())
+  const standOff=clamp(1-layFlatness+furWire*.22,.04,.78)
+  out.copy(tangent).multiplyScalar(1-standOff).addScaledVector(normal,standOff).normalize()
+  return out
 }
 
 function buildFurGeometry(
   source:Mesh,
   layer:FurLayer,
-  furLength:number,
+  animal:Individual,
   seed:number,
 ) {
+  const furLength=clamp(animal.phenotype.furLength,0,1)
+  const phenotype=animal.phenotype
   const geometry=source.geometry
   geometry.computeBoundingBox()
   const box=geometry.boundingBox!
@@ -297,12 +367,17 @@ function buildFurGeometry(
   const diagonal=Math.max(.001,boxSize.length())
 
   const speciesFactor=source.userData.furSpecies==='fox' ? 1.12 : 1
-  // Keep strand length proportional to the actual mesh, but much closer to
-  // mammalian coat scale than the earlier visibly-spiky debug dimensions.
-  const baseLength=diagonal*(.0030+furLength*.0100)*speciesFactor*layer.lengthScale
-  const maxBend=baseLength*(layer.name==='guard'?.95:.62)
-  const vertexPerHair=6
-  const totalVertices=layer.count*vertexPerHair
+  const textureLift=
+    1+
+    phenotype.furPlushness*.12+
+    phenotype.furCurlStrength*.10+
+    phenotype.furWireStrength*.08-
+    phenotype.furLayFlatness*.08
+  const baseLength=diagonal*(.0028+furLength*.0085)*speciesFactor*layer.lengthScale*textureLift
+  const maxBend=baseLength*(layer.name==='guard'?.80:.48)
+  const segments=layer.name==='guard' ? 2 : 1
+  const vertexPerSegment=6
+  const totalVertices=layer.count*vertexPerSegment*segments
 
   const positions=new Float32Array(totalVertices*3)
   const normals=new Float32Array(totalVertices*3)
@@ -314,11 +389,16 @@ function buildFurGeometry(
 
   const rng=makeRng(seed^hashName(source.name)^layer.seedOffset)
   const sampleSurface=buildSurfaceSampler(source)
+  const longAxis=boxSize.z>=boxSize.x ? new THREE.Vector3(0,0,1) : new THREE.Vector3(1,0,0)
   const tangent=new THREE.Vector3()
   const bitangent=new THREE.Vector3()
   const axis=new THREE.Vector3()
   const tip=new THREE.Vector3()
+  const mid=new THREE.Vector3()
   const root=new THREE.Vector3()
+  const hairDirection=new THREE.Vector3()
+  const flowTangent=new THREE.Vector3()
+  const curveOffset=new THREE.Vector3()
   const corners=[
     new THREE.Vector3(),
     new THREE.Vector3(),
@@ -368,14 +448,16 @@ function buildFurGeometry(
     sample:SurfaceSample,
     guideU:number,
     guideV:number,
+    baseFlex:number,
+    tipFlex:number,
   )=>{
     edgeA.subVectors(b,a)
     edgeB.subVectors(c,a)
     triNormal.crossVectors(edgeA,edgeB).normalize()
     if (!Number.isFinite(triNormal.x)) triNormal.copy(sample.normal)
-    writeVertex(a,triNormal,sample,0,guideU,guideV)
-    writeVertex(b,triNormal,sample,0,guideU,guideV)
-    writeVertex(c,triNormal,sample,1,guideU,guideV)
+    writeVertex(a,triNormal,sample,baseFlex,guideU,guideV)
+    writeVertex(b,triNormal,sample,baseFlex,guideU,guideV)
+    writeVertex(c,triNormal,sample,tipFlex,guideU,guideV)
   }
 
   for (let hair=0;hair<layer.count;hair++) {
@@ -390,32 +472,76 @@ function buildFurGeometry(
     bitangent.crossVectors(n,tangent).normalize()
 
     const yNorm=boxSize.y>1e-6 ? clamp((sample.position.y-box.min.y)/boxSize.y,0,1) : .5
-    // Paws, lower legs, ear tips and other vertical extremities should not
-    // carry the same long coat as the torso. This preserves readable anatomy.
-    const edgeDistance=Math.min(yNorm,1-yNorm)
-    const regionLengthScale=clamp(.55+edgeDistance*1.8,.55,1)
+    const center=box.getCenter(new THREE.Vector3())
+    const rel=new THREE.Vector3().subVectors(sample.position,center)
+    const halfLong=Math.max(.001,(Math.abs(longAxis.x)*boxSize.x+Math.abs(longAxis.z)*boxSize.z)*.5)
+    const longNorm=clamp(rel.dot(longAxis)/halfLong,-1,1)
 
-    const length=baseLength*(.72+rng()*.48)*regionLengthScale
-    // Real hair is extremely thin relative to its length. The previous
-    // debug-friendly width made every fiber read as a broad spike.
-    const width=length*(.024+rng()*.016)*layer.widthScale
-    const lift=length*.006
-    const lean=(rng()-.5)*length*layer.leanScale
-    const lean2=(rng()-.5)*length*layer.leanScale
+    let regionLengthScale=1
+    if (yNorm<.25) regionLengthScale*=.52
+    if (yNorm>.76 && Math.abs(longNorm)>.34) regionLengthScale*=.48
+    if (Math.abs(longNorm)>.88) regionLengthScale*=.72
+    if (yNorm<.16) regionLengthScale*=.70
+
+    groomDirection(
+      sample,
+      box,
+      boxSize,
+      n,
+      longAxis,
+      phenotype.furLayFlatness,
+      phenotype.furWireStrength,
+      hairDirection,
+    )
+
+    projectedTangent(longAxis,n,tangent,flowTangent)
+    bitangent.crossVectors(n,flowTangent).normalize()
+    if (bitangent.lengthSq()<1e-8) bitangent.set(0,0,1)
+
+    const length=baseLength*(.78+rng()*.38)*regionLengthScale
+    const thicknessGene=clamp(
+      phenotype.guardHairThickness*.56+
+      phenotype.furCoarseness*.26+
+      phenotype.furWireStrength*.18,
+      0,1,
+    )
+    const width=length*(.0085+rng()*.0055)*(layer.widthScale*(.55+thicknessGene*.70))
+    const lift=length*.0035
+    const phase=rng()*Math.PI*2
+    const waveAmp=length*(.02+.12*phenotype.furWaveStrength)*(layer.name==='guard'?1:.35)
+    const curlAmp=length*(.02+.16*phenotype.furCurlStrength)*(layer.name==='guard'?1:.25)
+    const wireKink=length*(rng()-.5)*.12*phenotype.furWireStrength
 
     root.copy(sample.position).addScaledVector(n,lift)
-    corners[0].copy(root).addScaledVector(tangent,width)
-    corners[1].copy(root).addScaledVector(tangent,-width)
-    corners[2].copy(root).addScaledVector(bitangent,width)
-    corners[3].copy(root).addScaledVector(bitangent,-width)
-
+    mid.copy(root)
+      .addScaledVector(hairDirection,length*.52)
+      .addScaledVector(flowTangent,Math.sin(phase)*waveAmp)
+      .addScaledVector(bitangent,Math.cos(phase)*curlAmp)
     tip.copy(root)
-      .addScaledVector(n,length)
-      .addScaledVector(tangent,lean)
-      .addScaledVector(bitangent,lean2)
+      .addScaledVector(hairDirection,length)
+      .addScaledVector(flowTangent,Math.sin(phase+Math.PI*.85)*waveAmp)
+      .addScaledVector(bitangent,Math.cos(phase+Math.PI*.85)*curlAmp)
+      .addScaledVector(flowTangent,wireKink)
 
-    emitTriangle(corners[0],corners[1],tip,sample,guideU,guideV)
-    emitTriangle(corners[2],corners[3],tip,sample,guideU,guideV)
+    const emitCrossSegment=(from:THREE.Vector3,to:THREE.Vector3,baseFlex:number,tipFlex:number)=>{
+      const direction=new THREE.Vector3().subVectors(to,from).normalize()
+      const crossA=new THREE.Vector3().crossVectors(direction,n).normalize()
+      if (crossA.lengthSq()<1e-8) crossA.copy(flowTangent)
+      const crossB=new THREE.Vector3().crossVectors(direction,crossA).normalize()
+      corners[0].copy(from).addScaledVector(crossA,width)
+      corners[1].copy(from).addScaledVector(crossA,-width)
+      corners[2].copy(from).addScaledVector(crossB,width)
+      corners[3].copy(from).addScaledVector(crossB,-width)
+      emitTriangle(corners[0],corners[1],to,sample,guideU,guideV,baseFlex,tipFlex)
+      emitTriangle(corners[2],corners[3],to,sample,guideU,guideV,baseFlex,tipFlex)
+    }
+
+    if (segments===2) {
+      emitCrossSegment(root,mid,0,.52)
+      emitCrossSegment(mid,tip,.52,1)
+    } else {
+      emitCrossSegment(root,tip,0,1)
+    }
   }
 
   const furGeometry=new THREE.BufferGeometry()
@@ -438,16 +564,18 @@ function createFurMaterial(
   coatColor:string,
   layer:FurLayer,
   physics:FurGuidePhysicsState,
+  animal:Individual,
 ) {
+  const p=animal.phenotype
   const material=new THREE.MeshPhysicalMaterial({
     color:coatTexture?'#ffffff':coatColor,
     map:coatTexture || null,
-    roughness:layer.name==='guard'?.60:.82,
+    roughness:clamp(.92-p.coatGloss*.48+p.furCoarseness*.14, .34,.94),
     metalness:0,
     side:THREE.DoubleSide,
-    sheen:layer.name==='guard'?.66:.36,
-    sheenRoughness:.70,
-    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.18),
+    sheen:clamp(.22+p.furSilkiness*.58+p.coatGloss*.20,.18,.92),
+    sheenRoughness:clamp(.86-p.coatGloss*.42+p.furCoarseness*.10,.36,.92),
+    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.10+p.furSilkiness*.18),
     emissive:layer.name==='guard'
       ? new THREE.Color(coatColor).multiplyScalar(.025)
       : new THREE.Color('#000000'),
@@ -513,8 +641,8 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       : 43000+densityNorm*27000+furLength*13000
   )*lodScale)
 
-  const guardFraction=.14+.04*furLength
-  const totalGuard=Math.max(3500,Math.round(targetTotal*guardFraction))
+  const guardFraction=clamp(.10+.06*(1-animal.phenotype.undercoatDepth)+.04*animal.phenotype.furWireStrength,.08,.20)
+  const totalGuard=Math.max(2800,Math.round(targetTotal*guardFraction))
   const totalUndercoat=Math.max(6000,targetTotal-totalGuard)
 
   const totalSourceVertices=candidates.reduce(
@@ -538,10 +666,10 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'undercoat',
         count:Math.max(400,Math.round(totalUndercoat*share)),
-        lengthScale:.55,
-        widthScale:.32,
-        leanScale:.08,
-        physicsStrength:.66,
+        lengthScale:.46+.16*animal.phenotype.undercoatDepth,
+        widthScale:.22+.10*animal.phenotype.furPlushness,
+        leanScale:.04+.08*animal.phenotype.furWaveStrength,
+        physicsStrength:.50+.24*(1-animal.phenotype.furPlushness),
         guideGridX:mobile?14:18,
         guideGridY:mobile?10:14,
         seedOffset:0x71a3,
@@ -549,10 +677,10 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:1.45,
-        widthScale:.42,
-        leanScale:.16,
-        physicsStrength:1.12,
+        lengthScale:.92+.38*animal.phenotype.furCoarseness+.22*animal.phenotype.furCurlStrength,
+        widthScale:.22+.18*animal.phenotype.guardHairThickness,
+        leanScale:.08+.18*animal.phenotype.furWireStrength+.10*animal.phenotype.furWaveStrength,
+        physicsStrength:.82+.30*(1-animal.phenotype.guardHairStiffness)+.18*animal.phenotype.furCurlStrength,
         guideGridX:mobile?18:24,
         guideGridY:mobile?14:18,
         seedOffset:0x2bf1,
@@ -563,19 +691,19 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       const built=buildFurGeometry(
         source,
         layer,
-        furLength,
+        animal,
         animal.seed+meshIndex*7919,
       )
       const physics=createGuidePhysicsState(
         layer,
-        furLength,
+        animal,
         built.maxBend,
         animal.seed+meshIndex*7919,
       )
       guideStates.push(physics)
       createdGuides+=physics.guideCount
 
-      const material=createFurMaterial(coatTexture,coatColor,layer,physics)
+      const material=createFurMaterial(coatTexture,coatColor,layer,physics,animal)
       let fur:Mesh
 
       if (canUseSkinning(source)) {
