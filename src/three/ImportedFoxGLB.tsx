@@ -24,10 +24,12 @@ export function ImportedFoxGLB({
   animal,
   onLoadState,
   onFurCount,
+  onGuideCount,
 }:{
   animal:Individual
   onLoadState?:(state:'loading'|'ready'|'error')=>void
   onFurCount?:(count:number)=>void
+  onGuideCount?:(count:number)=>void
 }) {
   const [source,setSource]=useState<Group|null>(null)
   const [clips,setClips]=useState<THREE.AnimationClip[]>([])
@@ -176,7 +178,8 @@ export function ImportedFoxGLB({
   useEffect(()=>{
     if (!display) return
     onFurCount?.(Number(display.userData.generatedFurCount || 0))
-  },[display,onFurCount])
+    onGuideCount?.(Number(display.userData.generatedGuideCount || 0))
+  },[display,onFurCount,onGuideCount])
 
   useEffect(()=>{
     if (!display) return
@@ -217,8 +220,13 @@ export function ImportedFoxGLB({
     display.traverse(child=>{
       const mesh=child as Mesh
       if (!mesh.isMesh) return
-      if (Array.isArray(mesh.material)) mesh.material.forEach(m=>m.dispose())
-      else mesh.material?.dispose()
+      const disposeMaterial=(m:Material)=>{
+        const guideTexture=(m as THREE.Material & {userData:{furGuidePhysics?:{texture?:THREE.Texture}}}).userData?.furGuidePhysics?.texture
+        guideTexture?.dispose()
+        m.dispose()
+      }
+      if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMaterial)
+      else if (mesh.material) disposeMaterial(mesh.material)
       if (mesh.userData.generatedFur) mesh.geometry.dispose()
     })
   },[display])
