@@ -6,6 +6,7 @@ export type MutationKey = 'melanism' | 'albinism' | 'leucism' | 'piebald'
 export type CoatPattern = 'solid' | 'spotted' | 'rosetted'
 export type EarShape = 'rounded' | 'balanced' | 'pointed'
 export type TerrainType = 'open' | 'forest' | 'rocky' | 'wetland'
+export type FurTextureLabel = 'smooth' | 'coarse' | 'wiry' | 'curly' | 'wavy' | 'silky' | 'plush'
 
 export type GenePair = [number, number]
 
@@ -25,6 +26,17 @@ export interface Genome {
   tailLength: GenePair
   furLength: GenePair
   furDensity: GenePair
+  furCoarseness: GenePair
+  furWire: GenePair
+  furCurl: GenePair
+  furWave: GenePair
+  furSilkiness: GenePair
+  furPlushness: GenePair
+  furLayFlatness: GenePair
+  guardHairThickness: GenePair
+  guardHairStiffness: GenePair
+  undercoatDepth: GenePair
+  coatGloss: GenePair
   pigmentWarmth: GenePair
   pigmentIntensity: GenePair
   dilution: GenePair
@@ -50,6 +62,18 @@ export interface Phenotype {
   tailLengthCm: number
   furLength: number
   furDensityPerSqIn: number
+  furTextureLabel: FurTextureLabel
+  furLayFlatness: number
+  furCoarseness: number
+  furCurlStrength: number
+  furWaveStrength: number
+  furWireStrength: number
+  furSilkiness: number
+  furPlushness: number
+  guardHairThickness: number
+  guardHairStiffness: number
+  undercoatDepth: number
+  coatGloss: number
   coatName: string
   coatHex: string
   pattern: CoatPattern
