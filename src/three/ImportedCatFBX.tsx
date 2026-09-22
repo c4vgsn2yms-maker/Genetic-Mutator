@@ -9,6 +9,7 @@ import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './ca
 import { createCatLifeController } from './catLife'
 import { attachRealFur } from './realFur'
 import { smoothCreatureSurface } from './surfaceFinish'
+import { createCreatureSoftPhysics } from './creatureSoftPhysics'
 
 const CAT_FBX_URL =
   'https://raw.githubusercontent.com/nrz/ylikuutio/adcb264480542b2a6ca16cedbd1afecc605cb2d6/res/objects/www.blendswap.com/86110_rigged_and_animated_cat/cat.fbx'
@@ -152,7 +153,10 @@ export function ImportedCatFBX({
   const [error,setError]=useState<string|null>(null)
   const mixerRef=useRef<THREE.AnimationMixer|null>(null)
   const lifeRef=useRef<ReturnType<typeof createCatLifeController>|null>(null)
+  const softPhysicsRef=useRef<ReturnType<typeof createCreatureSoftPhysics>|null>(null)
   const lifeGroupRef=useRef<THREE.Group|null>(null)
+  const previousBodyPositionRef=useRef(new THREE.Vector3())
+  const bodyMotionRef=useRef(new THREE.Vector3())
   const lifeElapsedRef=useRef(0)
   const lifePhase=useMemo(()=>((animal.seed % 10007)/10007)*Math.PI*2,[animal.seed])
   const appearance=useMemo(()=>resolveVisibleAppearance(animal),[
@@ -366,12 +370,15 @@ export function ImportedCatFBX({
 
     const life=createCatLifeController(display,clips,animal.seed)
     lifeRef.current=life
+    const softPhysics=createCreatureSoftPhysics(display,clips,animal.seed)
+    softPhysicsRef.current=softPhysics
 
     return ()=>{
       mixer?.stopAllAction()
       if (mixer) mixer.uncacheRoot(display)
       if (mixerRef.current===mixer) mixerRef.current=null
       if (lifeRef.current===life) lifeRef.current=null
+      if (softPhysicsRef.current===softPhysics) softPhysicsRef.current=null
     }
   },[display,source,animal.seed])
 
@@ -407,6 +414,14 @@ export function ImportedCatFBX({
         geneticsScale[1]*(1+breath*.0075),
         geneticsScale[2]*(1+breath*.0035),
       )
+
+      const motion=bodyMotionRef.current
+        .copy(group.position)
+        .sub(previousBodyPositionRef.current)
+        .divideScalar(Math.max(.001,dt))
+      if (motion.length()>1) motion.setLength(1)
+      previousBodyPositionRef.current.copy(group.position)
+      softPhysicsRef.current?.update(dt,t,motion)
     }
   })
 
