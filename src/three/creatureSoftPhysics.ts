@@ -37,6 +37,14 @@ function depth(object:THREE.Object3D) {
   return d
 }
 
+interface WindGust {
+  start:number
+  duration:number
+  strength:number
+  direction:THREE.Vector3
+  turbulence:number
+}
+
 export interface CreatureSoftPhysics {
   update:(delta:number,time:number,motion?:THREE.Vector3)=>void
 }
@@ -90,6 +98,49 @@ export function createCreatureSoftPhysics(
   const euler=new THREE.Euler()
   const phase=rng()*Math.PI*2
 
+  // Semi-random automatic wind. Each creature gets a deterministic random
+  // stream from its seed, but individual gust timing/strength/direction varies
+  // continuously while the viewer is open.
+  let gust:WindGust|null=null
+  let nextGustAt=.8+rng()*2.8
+  const gustVector=new THREE.Vector3()
+  const ambientWind=new THREE.Vector3()
+
+  const scheduleNextGust=(time:number)=>{
+    // Calm gaps are intentionally irregular. Occasionally gusts arrive close
+    // together, but most have a few seconds of quiet between them.
+    const clustered=rng()<.18
+    nextGustAt=time+(clustered ? .65+rng()*1.5 : 2.2+rng()*5.8)
+  }
+
+  const beginGust=(time:number)=>{
+    const roll=rng()
+    // Weighted strengths: mostly gentle/moderate, with occasional stronger gusts.
+    const strength=
+      roll<.58 ? .018+rng()*.027 :
+      roll<.90 ? .045+rng()*.040 :
+                 .085+rng()*.055
+
+    const angle=rng()*Math.PI*2
+    const vertical=(rng()-.5)*.10
+    gust={
+      start:time,
+      duration:1.0+rng()*3.6,
+      strength,
+      direction:new THREE.Vector3(
+        Math.cos(angle),
+        vertical,
+        Math.sin(angle),
+      ).normalize(),
+      turbulence:.20+rng()*.55,
+    }
+  }
+
+  const smooth01=(v:number)=>{
+    const x=Math.max(0,Math.min(1,v))
+    return x*x*(3-2*x)
+  }
+
   const integrateBone=(
     item:SoftBone,
     targetRotation:THREE.Vector3,
@@ -114,14 +165,51 @@ export function createCreatureSoftPhysics(
     update(delta:number,time:number,motion=new THREE.Vector3()) {
       const dt=Math.min(.05,Math.max(.001,delta))
 
-      // A damped spring makes wind/inertia persist and settle instead of
-      // snapping every strand directly to a sine-wave position.
-      target.set(
-        Math.sin(time*.73+phase)*.021,
-        -.010-Math.abs(Math.sin(time*.41+phase))*.004,
-        Math.cos(time*.57+phase*.73)*.018,
+      // Quiet ambient air keeps the coat from looking frozen between gusts.
+      ambientWind.set(
+        Math.sin(time*.31+phase)*.0045,
+        -.0015-Math.abs(Math.sin(time*.23+phase))*.0012,
+        Math.cos(time*.27+phase*.73)*.0040,
       )
+
+      if (!gust && time>=nextGustAt) beginGust(time)
+
+      gustVector.set(0,0,0)
+      if (gust) {
+        const age=time-gust.start
+        const progress=age/gust.duration
+
+        if (progress>=1) {
+          gust=null
+          scheduleNextGust(time)
+        } else {
+          // Smooth attack/release envelope, with a small irregular pulse riding
+          // on top so gusts do not feel like identical bell curves.
+          const attack=smooth01(Math.min(1,progress/.22))
+          const release=smooth01(Math.min(1,(1-progress)/.30))
+          const envelope=Math.min(attack,release)
+          const pulse=
+            1+
+            Math.sin(age*(5.1+gust.turbulence*4.5)+phase)*(.10*gust.turbulence)+
+            Math.sin(age*(10.7+gust.turbulence*5.0)+phase*.41)*(.055*gust.turbulence)
+
+          gustVector
+            .copy(gust.direction)
+            .multiplyScalar(gust.strength*envelope*Math.max(.70,pulse))
+
+          // Mild crosswind turbulence changes the exact bend during the gust.
+          gustVector.x+=Math.sin(age*7.3+phase)*gust.strength*.16*gust.turbulence*envelope
+          gustVector.z+=Math.cos(age*6.1+phase*.63)*gust.strength*.14*gust.turbulence*envelope
+        }
+      }
+
+      target.copy(ambientWind).add(gustVector)
       target.addScaledVector(motion,-.18)
+
+      // Expose the active gust for diagnostics/UI without putting React state
+      // in the per-frame physics loop.
+      root.userData.windGustStrength=gustVector.length()
+      root.userData.windGustActive=Boolean(gust && gustVector.length()>.003)
 
       forceVelocity.addScaledVector(target.clone().sub(force),18*dt)
       forceVelocity.multiplyScalar(Math.exp(-5.2*dt))
