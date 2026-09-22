@@ -8,6 +8,7 @@ import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
 import { createCatLifeController } from './catLife'
 import { attachRealFur } from './realFur'
+import { smoothCreatureSurface } from './surfaceFinish'
 
 const CAT_FBX_URL =
   'https://raw.githubusercontent.com/nrz/ylikuutio/adcb264480542b2a6ca16cedbd1afecc605cb2d6/res/objects/www.blendswap.com/86110_rigged_and_animated_cat/cat.fbx'
@@ -233,6 +234,12 @@ export function ImportedCatFBX({
     const clone=SkeletonUtils.clone(source) as Group
 
     const roughness=coatRoughness(animal)
+
+    clone.traverse(child=>{
+      const mesh=child as Mesh
+      if (!mesh.isMesh) return
+      smoothCreatureSurface(mesh)
+    })
 
     const materialRole=(meshName:string,materialName:string)=>{
       const name=`${meshName} ${materialName}`.toLowerCase()
