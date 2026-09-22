@@ -498,7 +498,9 @@ function makeChild(
   seedSalt:string,
 ):Individual {
   if (mother.sex !== 'female' || father.sex !== 'male') throw new Error('Breeding requires a female mother and male father.')
-  if (mother.genomeSchema !== father.genomeSchema) throw new Error('Genome schemas are incompatible.')
+  if (mother.genomeSchema !== father.genomeSchema || mother.species !== father.species) {
+    throw new Error('Cats can only breed with cats, and foxes can only breed with foxes.')
+  }
 
   const motherGenome=upgradeGenome(mother.genome)
   const fatherGenome=upgradeGenome(father.genome)
@@ -526,9 +528,10 @@ function makeChild(
     id: crypto.randomUUID(),
     name: name || `G${generation}-${Math.floor(r()*9999).toString().padStart(4,'0')}`,
     sex: r() < .5 ? 'female' : 'male',
+    species:mother.species,
     generation,
     lineage,
-    genomeSchema: 'Feline_01',
+    genomeSchema: mother.genomeSchema,
     genome,
     phenotype: {} as Phenotype,
     seed,
@@ -578,6 +581,8 @@ export function autoBreed(
 ): Individual[] {
   if (!Number.isInteger(generations) || generations < 1) throw new Error('Generation count must be at least 1.')
   if (starting.length < 2) throw new Error('At least two animals are required.')
+  const schemas=new Set(starting.map(a=>a.genomeSchema))
+  if (schemas.size>1) throw new Error('Auto Breed must run on one species at a time.')
 
   let population = starting.map(animal=>({
     ...animal,
