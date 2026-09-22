@@ -196,9 +196,10 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
     if (created>=targetTotal && meshIndex>0) break
 
     source.userData.furSpecies=animal.species
+    const usedHairCount=Math.min(hairCount,Math.max(220,targetTotal-created))
     const furGeometry=buildFurGeometry(
       source,
-      Math.min(hairCount,targetTotal-created+220),
+      usedHairCount,
       furLength,
       animal.seed+meshIndex*7919,
     )
@@ -224,7 +225,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
     fur.bind(source.skeleton,source.bindMatrix.clone())
 
     source.parent?.add(fur)
-    created+=hairCount
+    created+=usedHairCount
   }
 
   return created
