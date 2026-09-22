@@ -299,7 +299,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 8.0 cats + foxes · species-specific genetics and 3D models</small>
+                <small>Phase 8.1 cats + foxes · cats now have procedural life behaviors</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
