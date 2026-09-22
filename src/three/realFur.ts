@@ -101,10 +101,14 @@ function buildFurGeometry(
     uvs[p2+1]=vv
 
     const p4=outVertex*4
-    for (let k=0;k<4;k++) {
-      skinIndices[p4+k]=skinIndex.getComponent(sourceIndex,k)
-      skinWeights[p4+k]=skinWeight.getComponent(sourceIndex,k)
-    }
+    skinIndices[p4]=skinIndex.getX(sourceIndex)
+    skinIndices[p4+1]=skinIndex.getY(sourceIndex)
+    skinIndices[p4+2]=skinIndex.getZ(sourceIndex)
+    skinIndices[p4+3]=skinIndex.getW(sourceIndex)
+    skinWeights[p4]=skinWeight.getX(sourceIndex)
+    skinWeights[p4+1]=skinWeight.getY(sourceIndex)
+    skinWeights[p4+2]=skinWeight.getZ(sourceIndex)
+    skinWeights[p4+3]=skinWeight.getW(sourceIndex)
     outVertex++
   }
 
@@ -206,7 +210,6 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       metalness:0,
       side:THREE.DoubleSide,
     })
-    material.skinning=true
 
     const fur=new THREE.SkinnedMesh(furGeometry,material)
     fur.name=`GeneratedRealFur_${source.name || meshIndex}`
