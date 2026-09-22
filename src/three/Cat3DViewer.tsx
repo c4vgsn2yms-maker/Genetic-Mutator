@@ -17,10 +17,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.2.1 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.3 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.2.1 · animated ${speciesLabel} active`
-            : `3D BUILD 8.2.1 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.3 · animated ${speciesLabel} active`
+            : `3D BUILD 8.3 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -84,7 +84,11 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
       </div>
 
       <div className="viewer-3d-hint">
-        {loadState==='ready' && <strong>{furCount.toLocaleString()} geometric fur fibers active · </strong>}
+        {loadState==='ready' && (
+          <strong>
+            {animal.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in² biological coat · {furCount.toLocaleString()} individual 3D hairs rendered ·{' '}
+          </strong>
+        )}
         {loadState==='ready'
           ? isFox
           ? `Viewing ${animal.name} · fox phenotype + inherited mutations + habitat selection`
