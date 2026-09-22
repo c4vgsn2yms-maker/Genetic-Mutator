@@ -299,7 +299,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 8.1.1 cats + foxes · visible cat idle life motion</small>
+                <small>Phase 8.2 cats + foxes · thousands of skinned geometric fur hairs</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
