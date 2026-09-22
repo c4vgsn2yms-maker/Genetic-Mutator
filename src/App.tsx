@@ -299,7 +299,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 8.3 cats + foxes · inherited 60k–120k hairs/in² coat density</small>
+                <small>Phase 8.4 visible guard fur + smooth creature surfaces</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
