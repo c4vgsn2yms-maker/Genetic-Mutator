@@ -23,7 +23,14 @@ interface FurLayer {
   lengthScale:number
   widthScale:number
   leanScale:number
+  physicsStrength:number
   seedOffset:number
+}
+
+interface FurPhysicsState {
+  time:{value:number}
+  force:{value:THREE.Vector3}
+  flutter:{value:number}
 }
 
 function makeRng(seed:number) {
@@ -205,6 +212,8 @@ function buildFurGeometry(
   const uvs=new Float32Array(totalVertices*2)
   const skinIndices=new Uint16Array(totalVertices*4)
   const skinWeights=new Float32Array(totalVertices*4)
+  const furFlex=new Float32Array(totalVertices)
+  const furPhase=new Float32Array(totalVertices)
 
   const rng=makeRng(seed^hashName(source.name)^layer.seedOffset)
   const sampleSurface=buildSurfaceSampler(source)
@@ -230,6 +239,8 @@ function buildFurGeometry(
     u:number,
     v:number,
     sample:SurfaceSample,
+    flex:number,
+    phase:number,
   )=>{
     const p3=outVertex*3
     positions[p3]=vertex.x
@@ -248,6 +259,8 @@ function buildFurGeometry(
       skinIndices[p4+slot]=sample.skinIndices[slot]
       skinWeights[p4+slot]=sample.skinWeights[slot]
     }
+    furFlex[outVertex]=flex
+    furPhase[outVertex]=phase
     outVertex++
   }
 
@@ -256,14 +269,15 @@ function buildFurGeometry(
     b:THREE.Vector3,
     c:THREE.Vector3,
     sample:SurfaceSample,
+    phase:number,
   )=>{
     edgeA.subVectors(b,a)
     edgeB.subVectors(c,a)
     triNormal.crossVectors(edgeA,edgeB).normalize()
     if (!Number.isFinite(triNormal.x)) triNormal.copy(sample.normal)
-    writeVertex(a,triNormal,sample.u,sample.v,sample)
-    writeVertex(b,triNormal,sample.u,sample.v,sample)
-    writeVertex(c,triNormal,sample.u,sample.v,sample)
+    writeVertex(a,triNormal,sample.u,sample.v,sample,0,phase)
+    writeVertex(b,triNormal,sample.u,sample.v,sample,0,phase)
+    writeVertex(c,triNormal,sample.u,sample.v,sample,1,phase)
   }
 
   for (let hair=0;hair<layer.count;hair++) {
@@ -280,6 +294,7 @@ function buildFurGeometry(
     const lift=length*.012
     const lean=(rng()-.5)*length*layer.leanScale
     const lean2=(rng()-.5)*length*layer.leanScale
+    const phase=rng()
 
     root.copy(sample.position).addScaledVector(n,lift)
     corners[0].copy(root).addScaledVector(tangent,width)
@@ -292,8 +307,8 @@ function buildFurGeometry(
       .addScaledVector(tangent,lean)
       .addScaledVector(bitangent,lean2)
 
-    emitTriangle(corners[0],corners[1],tip,sample)
-    emitTriangle(corners[2],corners[3],tip,sample)
+    emitTriangle(corners[0],corners[1],tip,sample,phase)
+    emitTriangle(corners[2],corners[3],tip,sample,phase)
   }
 
   const furGeometry=new THREE.BufferGeometry()
@@ -302,6 +317,8 @@ function buildFurGeometry(
   furGeometry.setAttribute('uv',new THREE.BufferAttribute(uvs,2))
   furGeometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinIndices,4))
   furGeometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinWeights,4))
+  furGeometry.setAttribute('furFlex',new THREE.Float32BufferAttribute(furFlex,1))
+  furGeometry.setAttribute('furPhase',new THREE.Float32BufferAttribute(furPhase,1))
   furGeometry.computeBoundingSphere()
   return furGeometry
 }
@@ -311,16 +328,54 @@ function createFurMaterial(
   coatColor:string,
   layer:FurLayer,
 ) {
-  return new THREE.MeshPhysicalMaterial({
+  const material=new THREE.MeshPhysicalMaterial({
     color:coatTexture?'#ffffff':coatColor,
     map:coatTexture || null,
-    roughness:layer.name==='guard'?.68:.86,
+    roughness:layer.name==='guard'?.60:.82,
     metalness:0,
     side:THREE.DoubleSide,
-    sheen:layer.name==='guard'?.48:.28,
-    sheenRoughness:.78,
-    sheenColor:new THREE.Color(coatColor),
+    sheen:layer.name==='guard'?.66:.36,
+    sheenRoughness:.70,
+    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.12),
   })
+
+  const physics:FurPhysicsState={
+    time:{value:0},
+    force:{value:new THREE.Vector3()},
+    flutter:{value:layer.physicsStrength},
+  }
+  material.userData.furPhysics=physics
+  material.onBeforeCompile=(shader:any)=>{
+    shader.uniforms.furTime=physics.time
+    shader.uniforms.furForce=physics.force
+    shader.uniforms.furFlutter=physics.flutter
+
+    shader.vertexShader=shader.vertexShader.replace(
+      '#include <common>',
+      `#include <common>
+attribute float furFlex;
+attribute float furPhase;
+uniform float furTime;
+uniform vec3 furForce;
+uniform float furFlutter;`,
+    )
+
+    shader.vertexShader=shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+float furWave = sin(furTime * (2.1 + furPhase * 1.7) + furPhase * 6.2831853);
+float furRipple = cos(furTime * (3.4 + furPhase) + furPhase * 11.0);
+vec3 furBend = furForce * furFlex;
+furBend += vec3(
+  furWave * 0.010,
+  -abs(furWave) * 0.003,
+  furRipple * 0.008
+) * furFlutter * furFlex;
+transformed += furBend;`,
+    )
+  }
+  material.customProgramCacheKey=()=>`real-fur-physics-${layer.name}`
+  return material
 }
 
 export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptions) {
@@ -359,6 +414,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
   let created=0
   let createdUndercoat=0
   let createdGuard=0
+  const physicsMaterials:THREE.MeshPhysicalMaterial[]=[]
 
   for (let meshIndex=0;meshIndex<candidates.length;meshIndex++) {
     const source=candidates[meshIndex]
@@ -373,14 +429,16 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
         lengthScale:.82,
         widthScale:.92,
         leanScale:.12,
+        physicsStrength:.72,
         seedOffset:0x71a3,
       },
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:1.75,
-        widthScale:1.8,
-        leanScale:.22,
+        lengthScale:2.25,
+        widthScale:2.2,
+        leanScale:.26,
+        physicsStrength:1.35,
         seedOffset:0x2bf1,
       },
     ]
@@ -393,6 +451,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
         animal.seed+meshIndex*7919,
       )
       const material=createFurMaterial(coatTexture,coatColor,layer)
+      physicsMaterials.push(material)
       const fur=new THREE.SkinnedMesh(furGeometry,material)
       fur.name=`GeneratedRealFur_${layer.name}_${source.name || meshIndex}`
       fur.userData.generatedFur=true
@@ -414,8 +473,24 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
   }
 
   root.userData.generatedFurCount=created
+  root.userData.furPhysicsMaterials=physicsMaterials
   root.userData.generatedUndercoatCount=createdUndercoat
   root.userData.generatedGuardHairCount=createdGuard
   root.userData.biologicalFurDensityPerSqIn=biologicalDensity
   return created
+}
+
+
+export function updateRealFurPhysics(
+  root:THREE.Object3D,
+  time:number,
+  force:THREE.Vector3,
+) {
+  const materials=(root.userData.furPhysicsMaterials || []) as THREE.MeshPhysicalMaterial[]
+  for (const material of materials) {
+    const physics=material.userData.furPhysics as FurPhysicsState | undefined
+    if (!physics) continue
+    physics.time.value=time
+    physics.force.value.copy(force)
+  }
 }
