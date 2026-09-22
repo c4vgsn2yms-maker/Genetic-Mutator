@@ -17,10 +17,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.3 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.4 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.3 · animated ${speciesLabel} active`
-            : `3D BUILD 8.3 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.4 · animated ${speciesLabel} active`
+            : `3D BUILD 8.4 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
