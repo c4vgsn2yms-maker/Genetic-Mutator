@@ -4,19 +4,22 @@ import { ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { EnvironmentSettings, Individual } from '../types'
 import { ImportedCatFBX } from './ImportedCatFBX'
+import { ImportedFoxGLB } from './ImportedFoxGLB'
 import { CatEnvironment } from './CatEnvironment'
 
 export function Cat3DViewer({animal,environment}:{animal:Individual;environment:EnvironmentSettings}) {
   const [loadState,setLoadState]=useState<'loading'|'ready'|'error'>('loading')
+  const isFox=animal.species==='fox'
+  const speciesLabel=isFox?'fox':'cat'
 
   return (
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? '3D BUILD 7.4.2 · loading real FBX cat'
+          ? `3D BUILD 8.0 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? '3D BUILD 7.4.2 · rigged FBX cat active'
-            : '3D BUILD 7.4.2 · FBX unavailable'}
+            ? `3D BUILD 8.0 · animated ${speciesLabel} active`
+            : `3D BUILD 8.0 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -47,7 +50,9 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
         <directionalLight position={[-3.5,5,-5]} intensity={.58} color="#efe4cf" />
 
         <CatEnvironment environment={environment} />
-        <ImportedCatFBX animal={animal} onLoadState={setLoadState} />
+        {isFox
+          ? <ImportedFoxGLB animal={animal} onLoadState={setLoadState} />
+          : <ImportedCatFBX animal={animal} onLoadState={setLoadState} />}
         <ContactShadows position={[0,.01,0]} opacity={.28} scale={7} blur={3.2} far={5} />
 
         <OrbitControls
@@ -60,18 +65,29 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
       </Canvas>
 
       <div className="asset-credit">
-        <a href="https://blendswap.com/blend/18519" target="_blank" rel="noreferrer">
-          Rigged and animated Cat · JonasDichelle
-        </a>
-        <span>CC BY 3.0 · FBX copy sourced from the public Ylikuutio repository</span>
+        {isFox ? (
+          <>
+            <a href="https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Fox" target="_blank" rel="noreferrer">
+              Fox · Khronos glTF Sample Assets
+            </a>
+            <span>CC0 model · CC BY 4.0 rig/animation + glTF conversion</span>
+          </>
+        ) : (
+          <>
+            <a href="https://blendswap.com/blend/18519" target="_blank" rel="noreferrer">
+              Rigged and animated Cat · JonasDichelle
+            </a>
+            <span>CC BY 3.0 · FBX copy sourced from the public Ylikuutio repository</span>
+          </>
+        )}
       </div>
 
       <div className="viewer-3d-hint">
         {loadState==='ready'
-          ? `Viewing ${animal.name} · imported rigged cat · inherited phenotype + habitat selection active`
+          ? `Viewing ${animal.name} · ${speciesLabel} phenotype + inherited mutations + habitat selection`
           : loadState==='error'
-            ? 'The external FBX could not be loaded. Try refreshing or opening the site again.'
-            : 'Loading the imported cat model…'}
+            ? `The external ${speciesLabel} model could not be loaded. Try refreshing or opening the site again.`
+            : `Loading the ${speciesLabel} model…`}
       </div>
     </div>
   )
