@@ -16,10 +16,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.0 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.1 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.0 · animated ${speciesLabel} active`
-            : `3D BUILD 8.0 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.1 · animated ${speciesLabel} active`
+            : `3D BUILD 8.1 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -84,7 +84,9 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
 
       <div className="viewer-3d-hint">
         {loadState==='ready'
-          ? `Viewing ${animal.name} · ${speciesLabel} phenotype + inherited mutations + habitat selection`
+          ? isFox
+          ? `Viewing ${animal.name} · fox phenotype + inherited mutations + habitat selection`
+          : `Viewing ${animal.name} · cat phenotype + breathing, blinking, ear, tail and attention motion`
           : loadState==='error'
             ? `The external ${speciesLabel} model could not be loaded. Try refreshing or opening the site again.`
             : `Loading the ${speciesLabel} model…`}
