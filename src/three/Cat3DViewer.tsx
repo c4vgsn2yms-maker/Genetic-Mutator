@@ -9,6 +9,7 @@ import { CatEnvironment } from './CatEnvironment'
 
 export function Cat3DViewer({animal,environment}:{animal:Individual;environment:EnvironmentSettings}) {
   const [loadState,setLoadState]=useState<'loading'|'ready'|'error'>('loading')
+  const [furCount,setFurCount]=useState(0)
   const isFox=animal.species==='fox'
   const speciesLabel=isFox?'fox':'cat'
 
@@ -16,10 +17,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.2 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.2.1 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.2 · animated ${speciesLabel} active`
-            : `3D BUILD 8.2 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.2.1 · animated ${speciesLabel} active`
+            : `3D BUILD 8.2.1 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -51,8 +52,8 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
 
         <CatEnvironment environment={environment} />
         {isFox
-          ? <ImportedFoxGLB animal={animal} onLoadState={setLoadState} />
-          : <ImportedCatFBX animal={animal} onLoadState={setLoadState} />}
+          ? <ImportedFoxGLB animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} />
+          : <ImportedCatFBX animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} />}
         <ContactShadows position={[0,.01,0]} opacity={.28} scale={7} blur={3.2} far={5} />
 
         <OrbitControls
@@ -83,6 +84,7 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
       </div>
 
       <div className="viewer-3d-hint">
+        {loadState==='ready' && <strong>{furCount.toLocaleString()} geometric fur fibers active · </strong>}
         {loadState==='ready'
           ? isFox
           ? `Viewing ${animal.name} · fox phenotype + inherited mutations + habitat selection`
