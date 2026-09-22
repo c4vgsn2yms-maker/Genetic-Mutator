@@ -1,4 +1,5 @@
 name: Deploy GitHub Pages
+# Phase 8.6 physical guide-fur deploy refresh
 
 on:
   push:
