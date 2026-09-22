@@ -141,9 +141,11 @@ function attachVisibleEyes(root:Group,eyeColor:string,eyelidColor:string) {
 export function ImportedCatFBX({
   animal,
   onLoadState,
+  onFurCount,
 }:{
   animal:Individual
   onLoadState?:(state:'loading'|'ready'|'error')=>void
+  onFurCount?:(count:number)=>void
 }) {
   const [source,setSource]=useState<Group|null>(null)
   const [error,setError]=useState<string|null>(null)
@@ -326,14 +328,15 @@ export function ImportedCatFBX({
 
     // Real geometric fur: thousands of tapered, individually skinned fibers
     // protrude from the body surface and follow the cat skeleton.
-    attachRealFur(clone,{
+    const furCount=attachRealFur(clone,{
       animal,
       coatTexture,
       coatColor:appearance.baseCoatColor,
     })
+    onFurCount?.(furCount)
 
     return clone
-  },[source,animal,coatTexture,appearance])
+  },[source,animal,coatTexture,appearance,onFurCount])
 
   useEffect(()=>{
     if (!display) return
