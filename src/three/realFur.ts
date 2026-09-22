@@ -293,10 +293,13 @@ function buildFurGeometry(
   const geometry=source.geometry
   geometry.computeBoundingBox()
   const box=geometry.boundingBox!
-  const diagonal=Math.max(.001,box.getSize(new THREE.Vector3()).length())
+  const boxSize=box.getSize(new THREE.Vector3())
+  const diagonal=Math.max(.001,boxSize.length())
 
-  const speciesFactor=source.userData.furSpecies==='fox' ? 1.14 : 1
-  const baseLength=diagonal*(.0045+furLength*.0155)*speciesFactor*layer.lengthScale
+  const speciesFactor=source.userData.furSpecies==='fox' ? 1.12 : 1
+  // Keep strand length proportional to the actual mesh, but much closer to
+  // mammalian coat scale than the earlier visibly-spiky debug dimensions.
+  const baseLength=diagonal*(.0030+furLength*.0100)*speciesFactor*layer.lengthScale
   const maxBend=baseLength*(layer.name==='guard'?.95:.62)
   const vertexPerHair=6
   const totalVertices=layer.count*vertexPerHair
@@ -386,9 +389,17 @@ function buildFurGeometry(
     if (tangent.lengthSq()<1e-6) tangent.set(1,0,0)
     bitangent.crossVectors(n,tangent).normalize()
 
-    const length=baseLength*(.67+rng()*.62)
-    const width=length*(.028+rng()*.018)*layer.widthScale
-    const lift=length*.012
+    const yNorm=boxSize.y>1e-6 ? clamp((sample.position.y-box.min.y)/boxSize.y,0,1) : .5
+    // Paws, lower legs, ear tips and other vertical extremities should not
+    // carry the same long coat as the torso. This preserves readable anatomy.
+    const edgeDistance=Math.min(yNorm,1-yNorm)
+    const regionLengthScale=clamp(.55+edgeDistance*1.8,.55,1)
+
+    const length=baseLength*(.72+rng()*.48)*regionLengthScale
+    // Real hair is extremely thin relative to its length. The previous
+    // debug-friendly width made every fiber read as a broad spike.
+    const width=length*(.024+rng()*.016)*layer.widthScale
+    const lift=length*.006
     const lean=(rng()-.5)*length*layer.leanScale
     const lean2=(rng()-.5)*length*layer.leanScale
 
@@ -502,7 +513,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       : 43000+densityNorm*27000+furLength*13000
   )*lodScale)
 
-  const guardFraction=.22+.06*furLength
+  const guardFraction=.14+.04*furLength
   const totalGuard=Math.max(3500,Math.round(targetTotal*guardFraction))
   const totalUndercoat=Math.max(6000,targetTotal-totalGuard)
 
@@ -527,10 +538,10 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'undercoat',
         count:Math.max(400,Math.round(totalUndercoat*share)),
-        lengthScale:.82,
-        widthScale:.92,
-        leanScale:.12,
-        physicsStrength:.72,
+        lengthScale:.55,
+        widthScale:.32,
+        leanScale:.08,
+        physicsStrength:.66,
         guideGridX:mobile?14:18,
         guideGridY:mobile?10:14,
         seedOffset:0x71a3,
@@ -538,10 +549,10 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:2.55,
-        widthScale:2.75,
-        leanScale:.26,
-        physicsStrength:1.35,
+        lengthScale:1.45,
+        widthScale:.42,
+        leanScale:.16,
+        physicsStrength:1.12,
         guideGridX:mobile?18:24,
         guideGridY:mobile?14:18,
         seedOffset:0x2bf1,
