@@ -10,6 +10,7 @@ import { CatEnvironment } from './CatEnvironment'
 export function Cat3DViewer({animal,environment}:{animal:Individual;environment:EnvironmentSettings}) {
   const [loadState,setLoadState]=useState<'loading'|'ready'|'error'>('loading')
   const [furCount,setFurCount]=useState(0)
+  const [guideCount,setGuideCount]=useState(0)
   const isFox=animal.species==='fox'
   const speciesLabel=isFox?'fox':'cat'
 
@@ -17,10 +18,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.5 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.6 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.5 · animated ${speciesLabel} active`
-            : `3D BUILD 8.5 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.6 · animated ${speciesLabel} active`
+            : `3D BUILD 8.6 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -53,8 +54,8 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
 
         <CatEnvironment environment={environment} />
         {isFox
-          ? <ImportedFoxGLB animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} />
-          : <ImportedCatFBX animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} />}
+          ? <ImportedFoxGLB animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} onGuideCount={setGuideCount} />
+          : <ImportedCatFBX animal={animal} onLoadState={setLoadState} onFurCount={setFurCount} onGuideCount={setGuideCount} />}
         <ContactShadows position={[0,.01,0]} opacity={.28} scale={7} blur={3.2} far={5} />
 
         <OrbitControls
@@ -87,13 +88,13 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
       <div className="viewer-3d-hint">
         {loadState==='ready' && (
           <strong>
-            {animal.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in² biological coat · {furCount.toLocaleString()} individual 3D hairs rendered ·{' '}
+            {animal.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in² biological coat · {guideCount.toLocaleString()} spring-simulated guide hairs → {furCount.toLocaleString()} individual 3D follower hairs ·{' '}
           </strong>
         )}
         {loadState==='ready'
           ? isFox
-          ? `Viewing ${animal.name} · fox phenotype + moving fur, tail/ear inertia + habitat selection`
-          : `Viewing ${animal.name} · cat phenotype + breathing, blinking, moving fur and soft-body inertia`
+          ? `Viewing ${animal.name} · fox phenotype + physical guide-strand fur + tail/ear inertia`
+          : `Viewing ${animal.name} · cat phenotype + breathing, blinking + physical guide-strand fur`
           : loadState==='error'
             ? `The external ${speciesLabel} model could not be loaded. Try refreshing or opening the site again.`
             : `Loading the ${speciesLabel} model…`}
