@@ -12,6 +12,7 @@ import {
   type FounderCustomization,
 } from './genetics'
 import { CatPreview } from './CatPreview'
+import { FoxPreview } from './FoxPreview'
 import { Cat3DViewer } from './three/Cat3DViewer'
 import type {
   CoatPattern,
@@ -20,6 +21,7 @@ import type {
   Individual,
   MutationKey,
   SimulationState,
+  Species,
   TerrainType,
 } from './types'
 
@@ -30,6 +32,16 @@ const FOUNDER_PRESETS:Record<FounderBreed,Pick<FounderCustomization,'furLength'|
   'Maine Coon':{furLength:.90,tailLength:.78,bodyLength:.84,canineLength:.58,legLength:.60,earSize:.72,earShape:'pointed'},
   Siberian:{furLength:.82,tailLength:.72,bodyLength:.76,canineLength:.60,legLength:.61,earSize:.54,earShape:'balanced'},
   Custom:{furLength:.45,tailLength:.68,bodyLength:.60,canineLength:.50,legLength:.58,earSize:.52,earShape:'balanced'},
+  'Red Fox':{furLength:.60,tailLength:.82,bodyLength:.70,canineLength:.60,legLength:.67,earSize:.64,earShape:'pointed'},
+  'Arctic Fox':{furLength:.94,tailLength:.80,bodyLength:.54,canineLength:.54,legLength:.52,earSize:.28,earShape:'rounded'},
+  'Fennec Fox':{furLength:.28,tailLength:.66,bodyLength:.25,canineLength:.42,legLength:.54,earSize:.98,earShape:'pointed'},
+  'Silver Fox':{furLength:.64,tailLength:.84,bodyLength:.69,canineLength:.60,legLength:.65,earSize:.60,earShape:'pointed'},
+  'Custom Fox':{furLength:.58,tailLength:.78,bodyLength:.64,canineLength:.56,legLength:.64,earSize:.62,earShape:'pointed'},
+}
+
+const BREEDS_BY_SPECIES:Record<Species,FounderBreed[]> = {
+  cat:['Bengal','Maine Coon','Siberian','Custom'],
+  fox:['Red Fox','Arctic Fox','Fennec Fox','Silver Fox','Custom Fox'],
 }
 
 const ENVIRONMENT_PRESETS:EnvironmentSettings[] = [
@@ -70,10 +82,12 @@ function loadState(): SimulationState {
 
     const individuals = parsed.individuals.map(animal => {
       const genome=upgradeGenome(animal.genome)
+      const species:Species = animal.species || (animal.genomeSchema==='Vulpine_01'?'fox':'cat')
+      const genomeSchema = species==='fox' ? 'Vulpine_01' as const : 'Feline_01' as const
+      const upgraded={...animal,species,genomeSchema,genome}
       return {
-        ...animal,
-        genome,
-        phenotype:calculatePhenotype({...animal,genome}),
+        ...upgraded,
+        phenotype:calculatePhenotype(upgraded),
       }
     })
 
@@ -107,7 +121,9 @@ export function App() {
   const [mutationRate, setMutationRate] = useState(.012)
   const [founderName, setFounderName] = useState('New Founder')
   const [founderSex, setFounderSex] = useState<'male'|'female'>('female')
+  const [founderSpecies,setFounderSpecies]=useState<Species>('cat')
   const [founderBreed, setFounderBreed] = useState<FounderBreed>('Custom')
+  const [breedingSpecies,setBreedingSpecies]=useState<Species>(initial.individuals[0]?.species || 'cat')
   const [founderPattern,setFounderPattern]=useState<'auto'|CoatPattern>('auto')
   const [founderMutations,setFounderMutations]=useState<MutationKey[]>([])
   const [founderFurLength,setFounderFurLength]=useState(.45)
@@ -123,8 +139,8 @@ export function App() {
   }, [state])
 
   const selected = state.individuals.find(a => a.id === selectedId) || state.individuals[0]
-  const females = state.individuals.filter(a => a.sex === 'female')
-  const males = state.individuals.filter(a => a.sex === 'male')
+  const females = state.individuals.filter(a => a.sex === 'female' && a.species===breedingSpecies)
+  const males = state.individuals.filter(a => a.sex === 'male' && a.species===breedingSpecies)
   const mother = females.find(a => a.id === state.selectedMotherId)
   const father = males.find(a => a.id === state.selectedFatherId)
   const selectedFitness=selected?environmentFitness(selected,state.environment):0
@@ -146,6 +162,12 @@ export function App() {
   function applyEnvironmentPreset(name:string) {
     const preset=ENVIRONMENT_PRESETS.find(p=>p.name===name)
     if (preset) setState(s=>({...s,environment:{...preset}}))
+  }
+
+  function applyFounderSpecies(species:Species) {
+    setFounderSpecies(species)
+    const breed:FounderBreed=species==='fox'?'Red Fox':'Custom'
+    applyBreedPreset(breed)
   }
 
   function applyBreedPreset(breed:FounderBreed) {
@@ -191,11 +213,11 @@ export function App() {
   function runAutoBreed() {
     const requested = Math.max(1,Math.floor(autoGenerations))
     const batch = Math.min(requested,5000)
-    const breedingPool = state.individuals.filter(a => a.lineage === state.lineage)
-    setStatus(`Running ${batch.toLocaleString()} generations under ${state.environment.name} selection…`)
+    const breedingPool = state.individuals.filter(a => a.lineage === state.lineage && a.species===breedingSpecies)
+    setStatus(`Running ${batch.toLocaleString()} ${breedingSpecies} generations under ${state.environment.name} selection…`)
     try {
       const finalPopulation = autoBreed(
-        breedingPool.length >= 2 ? breedingPool : state.individuals,
+        breedingPool.length >= 2 ? breedingPool : state.individuals.filter(a=>a.species===breedingSpecies),
         batch,
         state.lineage,
         Math.max(4,Math.min(200,Math.floor(populationSize))),
@@ -229,7 +251,7 @@ export function App() {
       earSize:founderEarSize,
       earShape:founderEarShape,
     }
-    const founder = createFounder(founderName.trim() || 'Founder',founderSex,founderBreed,state.lineage,.5,customization)
+    const founder = createFounder(founderName.trim() || (founderSpecies==='fox'?'New Fox':'New Cat'),founderSex,founderBreed,state.lineage,.5,customization)
     setState(s => ({...s,individuals:[founder,...s.individuals]}))
     setSelectedId(founder.id)
     setStatus(`${founder.name} added with a customized inherited genome.`)
@@ -246,9 +268,9 @@ export function App() {
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">FELINE_01 GENOME LAB</div>
+          <div className="eyebrow">FELINE_01 + VULPINE_01 GENOME LAB</div>
           <h1>Genetic Mutator</h1>
-          <p>Build inherited feline genomes, change their environment, and watch natural selection reshape the lineage.</p>
+          <p>Breed cats and foxes with inherited genomes, mutations, customization, and environment-driven natural selection.</p>
         </div>
         <div className="header-actions">
           <div className="segmented" aria-label="Measurement system">
@@ -277,10 +299,11 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 7.4.2 corrected visible eye placement</small>
+                <small>Phase 8.0 cats + foxes · species-specific genetics and 3D models</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
+                <div><span>Species</span><strong>{selected.species}</strong></div>
                 <div><span>Sex</span><strong>{selected.sex}</strong></div>
                 <div><span>Generation</span><strong>{selected.generation.toLocaleString()}</strong></div>
                 <div><span>Weight</span><strong>{weight(selected.phenotype.weightKg,state.units)}</strong></div>
@@ -292,6 +315,7 @@ export function App() {
                 <div><span>Habitat fitness</span><strong>{percent(selectedFitness)}</strong></div>
               </div>
               <div className="tag-row">
+                <span className="tag species-tag">{selected.species}</span>
                 <span className="tag">{selected.lineage}</span>
                 <span className="tag">{selected.phenotype.coatName}</span>
                 <span className="tag">{selected.phenotype.pattern}</span>
@@ -307,7 +331,7 @@ export function App() {
             <div className="section-title">
               <div><span>RAISED ENVIRONMENT</span><h2>Natural selection</h2></div>
             </div>
-            <p className="helper">The environment does not create directed mutations. Random inherited variation still occurs; this habitat changes which kittens survive and which adults contribute most strongly to later generations.</p>
+            <p className="helper">The environment does not create directed mutations. Random inherited variation still occurs; this habitat changes which young survive and which adults contribute most strongly to later generations.</p>
             <label>Environment preset
               <select value={ENVIRONMENT_PRESETS.some(p=>p.name===state.environment.name)?state.environment.name:''} onChange={e=>applyEnvironmentPreset(e.target.value)}>
                 <option value="">Custom environment</option>
@@ -345,6 +369,16 @@ export function App() {
             <div className="section-title">
               <div><span>MANUAL BREEDING</span><h2>Choose parents</h2></div>
             </div>
+            <label>Breeding species
+              <select value={breedingSpecies} onChange={e=>{
+                const species=e.target.value as Species
+                setBreedingSpecies(species)
+                setState(s=>({...s,selectedMotherId:undefined,selectedFatherId:undefined}))
+              }}>
+                <option value="cat">Cats</option>
+                <option value="fox">Foxes</option>
+              </select>
+            </label>
             <label>Female
               <select value={state.selectedMotherId || ''} onChange={e=>setState(s=>({...s,selectedMotherId:e.target.value}))}>
                 <option value="">Select female</option>
@@ -387,18 +421,24 @@ export function App() {
             <form onSubmit={addFounder}>
               <label>Name<input value={founderName} onChange={e=>setFounderName(e.target.value)} /></label>
               <div className="two-col">
+                <label>Species
+                  <select value={founderSpecies} onChange={e=>applyFounderSpecies(e.target.value as Species)}>
+                    <option value="cat">Cat</option>
+                    <option value="fox">Fox</option>
+                  </select>
+                </label>
                 <label>Sex
                   <select value={founderSex} onChange={e=>setFounderSex(e.target.value as 'male'|'female')}>
                     <option value="female">Female</option>
                     <option value="male">Male</option>
                   </select>
                 </label>
-                <label>Starting type
-                  <select value={founderBreed} onChange={e=>applyBreedPreset(e.target.value as FounderBreed)}>
-                    <option>Bengal</option><option>Maine Coon</option><option>Siberian</option><option>Custom</option>
-                  </select>
-                </label>
               </div>
+              <label>Starting type
+                <select value={founderBreed} onChange={e=>applyBreedPreset(e.target.value as FounderBreed)}>
+                  {BREEDS_BY_SPECIES[founderSpecies].map(breed=><option key={breed} value={breed}>{breed}</option>)}
+                </select>
+              </label>
 
               <label>Coat pattern
                 <select value={founderPattern} onChange={e=>setFounderPattern(e.target.value as 'auto'|CoatPattern)}>
@@ -452,12 +492,12 @@ export function App() {
               <label>Ear shape
                 <select value={founderEarShape} onChange={e=>setFounderEarShape(e.target.value as EarShape)}>
                   <option value="rounded">Rounded</option>
-                  <option value="balanced">Balanced feline</option>
+                  <option value="balanced">Balanced</option>
                   <option value="pointed">Long / pointed</option>
                 </select>
               </label>
 
-              <p className="helper">These controls seed inherited genes, not permanent presets. Descendants recombine and mutate them. Multiple pigment alleles can coexist genetically, but expression follows epistasis: albinism masks melanism and other melanin-dependent coat effects even though those alleles can still be inherited by descendants.</p>
+              <p className="helper">These controls seed inherited genes, not permanent presets. Cats use Feline_01 and foxes use Vulpine_01, so they breed only within their own species. Descendants recombine and mutate traits normally; albinism remains epistatic over melanin-dependent coat effects.</p>
               <button className="secondary wide" type="submit">Add customized founder</button>
             </form>
           </section>
@@ -473,11 +513,14 @@ export function App() {
           {state.individuals.slice(0,120).map(animal => {
             const fitness=environmentFitness(animal,state.environment)
             return (
-              <button key={animal.id} className={`animal-card ${animal.id===selected?.id?'selected':''}`} onClick={()=>setSelectedId(animal.id)}>
-                <CatPreview animal={animal} compact />
+              <button key={animal.id} className={`animal-card ${animal.id===selected?.id?'selected':''}`} onClick={()=>{
+                setSelectedId(animal.id)
+                setBreedingSpecies(animal.species)
+              }}>
+                {animal.species==='fox' ? <FoxPreview animal={animal} compact /> : <CatPreview animal={animal} compact />}
                 <div className="card-copy">
                   <strong>{animal.name}</strong>
-                  <span>{animal.sex} · G{animal.generation.toLocaleString()}</span>
+                  <span>{animal.species} · {animal.sex} · G{animal.generation.toLocaleString()}</span>
                   <span>{weight(animal.phenotype.weightKg,state.units)} · {length(animal.phenotype.shoulderCm,state.units)} shoulder</span>
                   <span>{percent(fitness)} habitat fitness</span>
                   {animal.phenotype.mutationLabels.length > 0 && <span className="mutation-text">{animal.phenotype.mutationLabels.join(', ')}</span>}
