@@ -270,14 +270,23 @@ function inheritedMutation(pair: GenePair, mode: 'recessive'|'dominant') {
   return mode === 'dominant' ? pair[0] >= .5 || pair[1] >= .5 : pair[0] >= .5 && pair[1] >= .5
 }
 
-function coatFromGenome(g: Genome) {
+function coatFromGenome(g: Genome, species:Species) {
   const warm = avg(g.pigmentWarmth)
   const intensity = avg(g.pigmentIntensity)
   const dilution = avg(g.dilution)
   const silver = avg(g.silver)
+
+  if (species==='fox') {
+    if (silver>.74 && dilution>.72) return {name:'winter white',hex:'#e8e7df'}
+    if (silver>.72 && intensity>.62) return {name:'silver fox',hex:'#3b3d40'}
+    if (warm>.82 && dilution<.56) return {name:intensity>.68?'red':'orange',hex:intensity>.68?'#a9532c':'#ca7440'}
+    if (warm>.68 && dilution>.60) return {name:'sand',hex:'#d0aa72'}
+    if (warm<.34 && intensity>.68) return {name:'black-silver',hex:'#2a2c2f'}
+    return {name:'tawny',hex:'#9b704d'}
+  }
+
   let name = 'brown'
   let hex = '#75513b'
-
   if (silver > .68) { name = 'silver'; hex = '#a9adb1' }
   else if (warm > .80) { name = intensity > .7 ? 'copper' : 'orange'; hex = intensity > .7 ? '#a95f34' : '#ca7b43' }
   else if (warm > .66) { name = 'gold'; hex = '#b48a45' }
@@ -296,32 +305,45 @@ function earShapeFromGene(v:number):EarShape {
   return v<.34?'rounded':v>.68?'pointed':'balanced'
 }
 
-export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'seed'>): Phenotype {
+export function calculatePhenotype(
+  individual: Pick<Individual,'genome'|'sex'|'seed'|'species'|'genomeSchema'>
+): Phenotype {
   const g = upgradeGenome(individual.genome)
+  const species:Species = individual.species || (individual.genomeSchema==='Vulpine_01'?'fox':'cat')
   const sexScale = individual.sex === 'male' ? 1.08 : .96
-
   const structural = avg(g.sizePotential) * .34 + avg(g.growthDuration) * .20 + avg(g.boneMass) * .18 + avg(g.muscleMass) * .28
-  const weightKg = Math.max(.2, (2.6 + 10.8 * structural ** 2 + 3.8 * avg(g.boneMass) + 4.2 * avg(g.muscleMass)) * sexScale)
-  const shoulderCm = Math.max(8, (19 + 23 * avg(g.shoulderHeight) + 4 * structural) * Math.sqrt(sexScale))
-  const bodyLengthCm = Math.max(15, 35 + 42 * avg(g.bodyLength) + 8 * structural)
-  const tailLengthCm = Math.max(5, bodyLengthCm * (.40 + .55 * avg(g.tailLength)))
-  const canineLengthCm = .65 + 1.75*avg(g.canineLength)
+
+  const weightKg = species==='fox'
+    ? Math.max(.6,(.65 + 5.8 * structural ** 2 + 2.2 * avg(g.boneMass) + 2.7 * avg(g.muscleMass)) * sexScale)
+    : Math.max(.2,(2.6 + 10.8 * structural ** 2 + 3.8 * avg(g.boneMass) + 4.2 * avg(g.muscleMass)) * sexScale)
+
+  const shoulderCm = species==='fox'
+    ? Math.max(18,(18 + 33 * avg(g.shoulderHeight) + 3 * structural) * Math.sqrt(sexScale))
+    : Math.max(8,(19 + 23 * avg(g.shoulderHeight) + 4 * structural) * Math.sqrt(sexScale))
+
+  const bodyLengthCm = species==='fox'
+    ? Math.max(30,28 + 52 * avg(g.bodyLength) + 6 * structural)
+    : Math.max(15,35 + 42 * avg(g.bodyLength) + 8 * structural)
+
+  const tailLengthCm = species==='fox'
+    ? Math.max(14,bodyLengthCm * (.38 + .42 * avg(g.tailLength)))
+    : Math.max(5,bodyLengthCm * (.40 + .55 * avg(g.tailLength)))
+
+  const canineLengthCm = species==='fox'
+    ? .80 + 1.80 * avg(g.canineLength)
+    : .65 + 1.75 * avg(g.canineLength)
 
   const melanism = inheritedMutation(g.melanism,'dominant')
   const albinism = inheritedMutation(g.albinism,'recessive')
   const leucism = inheritedMutation(g.leucism,'dominant')
   const piebald = inheritedMutation(g.piebald,'dominant')
 
-  let {name: coatName, hex: coatHex} = coatFromGenome(g)
-  let patternHex = '#29241f'
-  let whiteFraction = 0
-
+  let {name: coatName, hex: coatHex} = coatFromGenome(g,species)
+  let patternHex = species==='fox' ? '#2d2420' : '#29241f'
+  let whiteFraction = species==='fox' && avg(g.silver)>.74 && avg(g.dilution)>.72 ? .78 : 0
   const mutations: string[] = []
 
-  // Pigmentation epistasis:
-  // Albinism prevents normal melanin expression, so a cat can genetically
-  // carry melanism (and other pigment loci) without visibly expressing them.
-  // Visible mutation labels describe phenotype, not every carried allele.
+  // Albinism is epistatic over melanin-dependent coloration in both species.
   if (albinism) {
     mutations.push('Albinism')
     coatName = 'albino'
@@ -332,7 +354,7 @@ export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'s
     if (leucism) {
       mutations.push('Leucism')
       coatName = 'leucistic ' + coatName
-      whiteFraction = Math.max(whiteFraction, .72)
+      whiteFraction = Math.max(whiteFraction,.72)
     } else if (melanism) {
       mutations.push('Melanism')
       coatName = 'melanistic ' + coatName
@@ -343,7 +365,7 @@ export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'s
     if (piebald) {
       mutations.push('Piebald')
       coatName = 'piebald ' + coatName
-      whiteFraction = Math.max(whiteFraction, .18 + .65 * avg(g.piebald))
+      whiteFraction = Math.max(whiteFraction,.18 + .65 * avg(g.piebald))
     }
   }
 
@@ -353,23 +375,23 @@ export function calculatePhenotype(individual: Pick<Individual,'genome'|'sex'|'s
     rosetteScore > .66 ? 'rosetted' : rosetteScore > .32 ? 'spotted' : 'solid'
 
   return {
-    weightKg: finite(weightKg, 4),
-    shoulderCm: finite(shoulderCm, 25),
-    bodyLengthCm: finite(bodyLengthCm, 45),
-    legRatio: .42 + avg(g.legLength) * .34,
-    skullWidth: .75 + avg(g.skullWidth) * .55,
-    muzzleLength: .65 + avg(g.muzzleLength) * .55,
-    canineLengthCm:finite(canineLengthCm,1.4),
-    earSize:.72+avg(g.earSize)*.72,
+    weightKg: finite(weightKg,species==='fox'?5:4),
+    shoulderCm: finite(shoulderCm,species==='fox'?38:25),
+    bodyLengthCm: finite(bodyLengthCm,species==='fox'?62:45),
+    legRatio: species==='fox' ? .48 + avg(g.legLength) * .34 : .42 + avg(g.legLength) * .34,
+    skullWidth: species==='fox' ? .68 + avg(g.skullWidth) * .46 : .75 + avg(g.skullWidth) * .55,
+    muzzleLength: species==='fox' ? .88 + avg(g.muzzleLength) * .72 : .65 + avg(g.muzzleLength) * .55,
+    canineLengthCm:finite(canineLengthCm,species==='fox'?1.7:1.4),
+    earSize:species==='fox' ? .70 + avg(g.earSize) * .78 : .72 + avg(g.earSize) * .72,
     earShape:earShapeFromGene(avg(g.earShape)),
-    tailLengthCm: finite(tailLengthCm, 30),
+    tailLengthCm: finite(tailLengthCm,species==='fox'?40:30),
     furLength: avg(g.furLength),
     coatName,
     coatHex,
     pattern,
-    patternDensity: Math.min(1, Math.max(0, avg(g.patternDensity) + (r()-.5)*.05)),
+    patternDensity: Math.min(1,Math.max(0,avg(g.patternDensity)+(r()-.5)*.05)),
     patternHex,
-    whiteFraction: Math.min(.96, whiteFraction),
+    whiteFraction: Math.min(.96,whiteFraction),
     mutationLabels: mutations,
   }
 }
