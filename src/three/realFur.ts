@@ -62,8 +62,10 @@ function buildFurGeometry(
   // The previous fibers were physically present but too small to survive
   // phone-scale rasterization. Make each strand long/thick enough to break
   // the silhouette while still reading as fur rather than quills.
-  const baseLength=diagonal*(.010+furLength*.022)*speciesFactor
-  const vertexPerHair=12
+  // Fine individual fibers. These lengths are deliberately small so the
+  // coat reads as dense fur instead of visible spikes/quills.
+  const baseLength=diagonal*(.0035+furLength*.0135)*speciesFactor
+  const vertexPerHair=6
   const totalVertices=hairCount*vertexPerHair
 
   const positions=new Float32Array(totalVertices*3)
@@ -135,17 +137,20 @@ function buildFurGeometry(
     if (tangent.lengthSq()<1e-6) tangent.set(1,0,0)
     bitangent.crossVectors(n,tangent).normalize()
 
-    const length=baseLength*(.58+rng()*.72)
-    const width=length*(.075+rng()*.035)
-    const lift=length*.060
+    const length=baseLength*(.62+rng()*.68)
+    const width=length*(.018+rng()*.014)
+    const lift=length*.018
     const lean=(rng()-.5)*length*.18
     const lean2=(rng()-.5)*length*.18
     const root=p.clone().addScaledVector(n,lift)
 
-    corners[0].copy(root).addScaledVector(tangent,width).addScaledVector(bitangent,width)
-    corners[1].copy(root).addScaledVector(tangent,-width).addScaledVector(bitangent,width)
-    corners[2].copy(root).addScaledVector(tangent,-width).addScaledVector(bitangent,-width)
-    corners[3].copy(root).addScaledVector(tangent,width).addScaledVector(bitangent,-width)
+    // Two crossed tapered triangles form one hair fiber. They remain visible
+    // from more camera angles than a single paper-thin triangle while using
+    // half the vertices of the older four-sided pyramid strand.
+    corners[0].copy(root).addScaledVector(tangent,width)
+    corners[1].copy(root).addScaledVector(tangent,-width)
+    corners[2].copy(root).addScaledVector(bitangent,width)
+    corners[3].copy(root).addScaledVector(bitangent,-width)
 
     tip.copy(root)
       .addScaledVector(n,length)
@@ -156,9 +161,7 @@ function buildFurGeometry(
     const vv=uv?uv.getY(index):.5
 
     emitTriangle(corners[0],corners[1],tip,uu,vv,index)
-    emitTriangle(corners[1],corners[2],tip,uu,vv,index)
     emitTriangle(corners[2],corners[3],tip,uu,vv,index)
-    emitTriangle(corners[3],corners[0],tip,uu,vv,index)
   }
 
   const furGeometry=new THREE.BufferGeometry()
@@ -181,9 +184,17 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
   if (!candidates.length) return 0
 
   const furLength=Math.max(0,Math.min(1,animal.phenotype.furLength))
-  const targetTotal=animal.species==='fox'
-    ? Math.round(9000+furLength*7000)
-    : Math.round(7500+furLength*6000)
+  const biologicalDensity=Math.max(60000,Math.min(120000,animal.phenotype.furDensityPerSqIn || 90000))
+  const densityNorm=(biologicalDensity-60000)/60000
+  const mobile=typeof navigator!=='undefined' && /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent)
+  const lodScale=mobile?.75:1
+  // The biological coat is tens of millions of hairs. The browser draws a
+  // representative LOD sample of individually skinned geometric fibers.
+  const targetTotal=Math.round((
+    animal.species==='fox'
+      ? 42000+densityNorm*28000+furLength*12000
+      : 36000+densityNorm*24000+furLength*12000
+  )*lodScale)
 
   const totalSourceVertices=candidates.reduce(
     (sum,mesh)=>sum+mesh.geometry.getAttribute('position').count,
@@ -232,5 +243,6 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
   }
 
   root.userData.generatedFurCount=created
+  root.userData.biologicalFurDensityPerSqIn=biologicalDensity
   return created
 }
