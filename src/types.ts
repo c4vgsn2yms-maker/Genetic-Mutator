@@ -1,4 +1,6 @@
 export type Sex = 'male' | 'female'
+export type Species = 'cat' | 'fox'
+export type GenomeSchema = 'Feline_01' | 'Vulpine_01'
 
 export type MutationKey = 'melanism' | 'albinism' | 'leucism' | 'piebald'
 export type CoatPattern = 'solid' | 'spotted' | 'rosetted'
@@ -59,9 +61,10 @@ export interface Individual {
   id: string
   name: string
   sex: Sex
+  species: Species
   generation: number
   lineage: string
-  genomeSchema: 'Feline_01'
+  genomeSchema: GenomeSchema
   genome: Genome
   phenotype: Phenotype
   seed: number
