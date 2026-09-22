@@ -299,7 +299,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 8.2.1 cats + foxes · visible dense geometric fur fibers</small>
+                <small>Phase 8.3 cats + foxes · inherited 60k–120k hairs/in² coat density</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
@@ -312,6 +312,7 @@ export function App() {
                 <div><span>Tail length</span><strong>{length(selected.phenotype.tailLengthCm,state.units)}</strong></div>
                 <div><span>Canine length</span><strong>{length(selected.phenotype.canineLengthCm,state.units)}</strong></div>
                 <div><span>Ears</span><strong>{selected.phenotype.earShape} · {selected.phenotype.earSize.toFixed(2)}×</strong></div>
+                <div><span>Fur density</span><strong>{selected.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in²</strong></div>
                 <div><span>Habitat fitness</span><strong>{percent(selectedFitness)}</strong></div>
               </div>
               <div className="tag-row">
