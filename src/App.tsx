@@ -355,7 +355,7 @@ export function App() {
                   <span>LIVE 3D PHENOTYPE</span>
                   <strong>{selected.name}</strong>
                 </div>
-                <small>Phase 8.8 fur texture genetics + groomed coat lay</small>
+                <small>Phase 8.8.1 fur texture genetics + balanced individual coat strands</small>
               </div>
               <Cat3DViewer animal={selected} environment={state.environment} />
               <div className="animal-facts">
