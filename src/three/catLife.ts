@@ -166,8 +166,8 @@ export function createCatLifeController(
       elapsed+=dt
 
       if (elapsed>=nextLook) {
-        targetHeadYaw=(rng()-.5)*.13
-        targetHeadPitch=(rng()-.5)*.055
+        targetHeadYaw=(rng()-.5)*.18
+        targetHeadPitch=(rng()-.5)*.075
         nextLook=elapsed+1.6+rng()*3.3
       }
 
@@ -214,8 +214,8 @@ export function createCatLifeController(
       // independent tip twitch. Later segments move more than the base.
       tail.forEach((segment,index)=>{
         const t=index/Math.max(1,tail.length-1)
-        const sway=Math.sin(elapsed*.92+phase+index*.36)*(.012+.035*t)
-        const lift=Math.sin(elapsed*.57+phase*.8+index*.24)*(.005+.014*t)
+        const sway=Math.sin(elapsed*.92+phase+index*.36)*(.018+.050*t)
+        const lift=Math.sin(elapsed*.57+phase*.8+index*.24)*(.008+.020*t)
         const tip=Math.sin(elapsed*2.35+phase+index*.53)*(.003+.008*t*t)
         applyDelta(segment,lift,sway,tip)
       })
@@ -227,7 +227,7 @@ export function createCatLifeController(
         const pulse=index===earFlickIndex && x>=0 && x<=1 ? Math.sin(Math.PI*x) : 0
         const side=/left|\.l|_l|l_/i.test(ear.bone.name)?-1:/right|\.r|_r|r_/i.test(ear.bone.name)?1:(index%2?1:-1)
         const micro=Math.sin(elapsed*1.35+phase+index*1.7)*.004
-        applyDelta(ear,micro,pulse*.045,pulse*.065*side)
+        applyDelta(ear,micro,pulse*.075,pulse*.105*side)
       })
 
       const blink=blinkPulse(elapsed)
