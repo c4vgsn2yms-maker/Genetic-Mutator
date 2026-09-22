@@ -541,14 +541,19 @@ export function environmentFitness(individual:Individual,environment:Environment
   // heavier frames; heat favors shorter coats, larger ears and leaner frames.
   if (cold>.05) {
     add(match(p.furLength,.85,.55),1.0+cold)
+    add(match(p.undercoatDepth,.88,.48),.55+cold*.82)
+    add(match(p.furPlushness,.78,.58),.30+cold*.48)
     add(match(p.earSize,.82,.55),.55+cold*.45)
     add(match(unitClamp(p.weightKg/14),.68,.65),.55+cold*.35)
   } else if (heat>.05) {
     add(match(p.furLength,.16,.52),1.0+heat)
+    add(match(p.undercoatDepth,.22,.52),.38+heat*.62)
+    add(match(p.furLayFlatness,.82,.58),.24+heat*.34)
     add(match(p.earSize,1.25,.55),.55+heat*.45)
     add(match(unitClamp(p.weightKg/14),.34,.62),.45+heat*.30)
   } else {
     add(match(p.furLength,.48,.70),.55)
+    add(match(p.undercoatDepth,.52,.75),.25)
   }
 
   if (environment.terrain==='open') {
@@ -593,8 +598,11 @@ export function describeAdaptations(individual:Individual,environment:Environmen
   const labels:string[]=[]
   const p=individual.phenotype
   const g=upgradeGenome(individual.genome)
-  if (environment.temperatureC<=5 && p.furLength>.68) labels.push('cold-insulated coat')
+  if (environment.temperatureC<=5 && p.furLength>.68 && p.undercoatDepth>.62) labels.push('cold-insulated double coat')
   if (environment.temperatureC>=28 && p.furLength<.32 && p.earSize>1.05) labels.push('heat-dissipating build')
+  if (p.furTextureLabel==='curly') labels.push('curly coat structure')
+  if (p.furTextureLabel==='wiry') labels.push('wiry guard coat')
+  if (p.furTextureLabel==='plush' && p.undercoatDepth>.72) labels.push('plush undercoat')
   if (environment.terrain==='open' && p.legRatio>.66) labels.push('cursorial long legs')
   if (environment.terrain==='rocky' && avg(g.boneMass)>.68) labels.push('robust rocky-terrain frame')
   if (environment.preySpeed>.65 && p.canineLengthCm>1.55) labels.push('long predatory canines')
