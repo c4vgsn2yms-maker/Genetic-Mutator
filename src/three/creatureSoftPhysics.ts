@@ -127,7 +127,7 @@ export function createCreatureSoftPhysics(
       forceVelocity.multiplyScalar(Math.exp(-5.2*dt))
       force.addScaledVector(forceVelocity,dt)
 
-      updateRealFurPhysics(root,time,force)
+      updateRealFurPhysics(root,time,force,dt)
 
       tail.forEach((item,index)=>{
         const t=index/Math.max(1,tail.length-1)
