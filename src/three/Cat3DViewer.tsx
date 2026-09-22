@@ -18,10 +18,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.7.2 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.8 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.7.2 · animated ${speciesLabel} active`
-            : `3D BUILD 8.7.2 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.8 · animated ${speciesLabel} active`
+            : `3D BUILD 8.8 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -88,13 +88,13 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
       <div className="viewer-3d-hint">
         {loadState==='ready' && (
           <strong>
-            {animal.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in² biological coat · {guideCount.toLocaleString()} spring-simulated guide hairs → {furCount.toLocaleString()} individual 3D follower hairs ·{' '}
+            {animal.phenotype.furTextureLabel} coat · {animal.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in² · {guideCount.toLocaleString()} physical guides → {furCount.toLocaleString()} 3D hairs ·{' '}
           </strong>
         )}
         {loadState==='ready'
           ? isFox
-          ? `Viewing ${animal.name} · fox phenotype + physical guide-strand fur + semi-random wind gusts`
-          : `Viewing ${animal.name} · cat phenotype + breathing, blinking + physical fur + semi-random wind gusts`
+          ? `Viewing ${animal.name} · ${animal.phenotype.furTextureLabel} groomed fox coat + physical guides + wind gusts`
+          : `Viewing ${animal.name} · ${animal.phenotype.furTextureLabel} groomed cat coat + breathing, blinking + wind gusts`
           : loadState==='error'
             ? `The external ${speciesLabel} model could not be loaded. Try refreshing or opening the site again.`
             : `Loading the ${speciesLabel} model…`}
