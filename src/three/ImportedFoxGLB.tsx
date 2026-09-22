@@ -6,6 +6,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
+import { attachRealFur } from './realFur'
 
 const FOX_GLB_URL =
   'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb'
@@ -150,6 +151,12 @@ export function ImportedFoxGLB({
       else if (mesh.material) apply(mesh.material)
     })
 
+    attachRealFur(clone,{
+      animal,
+      coatTexture,
+      coatColor:appearance.baseCoatColor,
+    })
+
     return clone
   },[source,animal,coatTexture,appearance])
 
@@ -181,6 +188,7 @@ export function ImportedFoxGLB({
       if (!mesh.isMesh) return
       if (Array.isArray(mesh.material)) mesh.material.forEach(m=>m.dispose())
       else mesh.material?.dispose()
+      if (mesh.userData.generatedFur) mesh.geometry.dispose()
     })
   },[display])
 
