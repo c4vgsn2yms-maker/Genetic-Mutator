@@ -148,6 +148,9 @@ export function ImportedCatFBX({
   const [error,setError]=useState<string|null>(null)
   const mixerRef=useRef<THREE.AnimationMixer|null>(null)
   const lifeRef=useRef<ReturnType<typeof createCatLifeController>|null>(null)
+  const lifeGroupRef=useRef<THREE.Group|null>(null)
+  const lifeElapsedRef=useRef(0)
+  const lifePhase=useMemo(()=>((animal.seed % 10007)/10007)*Math.PI*2,[animal.seed])
   const appearance=useMemo(()=>resolveVisibleAppearance(animal),[
     animal.phenotype.coatHex,
     animal.phenotype.patternHex,
@@ -353,6 +356,35 @@ export function ImportedCatFBX({
     const dt=Math.min(delta,.05)
     mixerRef.current?.update(dt)
     lifeRef.current?.update(dt)
+
+    // Guaranteed visible idle life layer. This lives outside the imported FBX
+    // skeleton, so it still works even when the source rig uses unexpected
+    // bone names or contains no usable idle animation clip.
+    const group=lifeGroupRef.current
+    if (group) {
+      lifeElapsedRef.current+=dt
+      const t=lifeElapsedRef.current
+      const breath=Math.sin(t*1.72+lifePhase)
+      const slow=Math.sin(t*.48+lifePhase*.73)
+      const attention=Math.sin(t*.31+lifePhase*1.27)
+      const settle=Math.pow(Math.max(0,Math.sin(t*.57+lifePhase*.41)),8)
+
+      group.position.set(
+        slow*.010,
+        breath*.010-settle*.006,
+        Math.sin(t*.39+lifePhase)*.006,
+      )
+      group.rotation.set(
+        settle*.018+Math.sin(t*.61+lifePhase)*.004,
+        attention*.024,
+        slow*.012,
+      )
+      group.scale.set(
+        geneticsScale[0]*(1+breath*.0025),
+        geneticsScale[1]*(1+breath*.0075),
+        geneticsScale[2]*(1+breath*.0035),
+      )
+    }
   })
 
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
@@ -399,7 +431,7 @@ export function ImportedCatFBX({
   if (!display) return null
 
   return (
-    <group scale={geneticsScale}>
+    <group ref={lifeGroupRef} scale={geneticsScale}>
       <primitive object={display} />
     </group>
   )
