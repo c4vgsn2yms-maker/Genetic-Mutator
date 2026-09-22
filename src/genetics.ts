@@ -8,6 +8,7 @@ import type {
   MutationKey,
   Phenotype,
   Sex,
+  Species,
 } from './types'
 
 const LOCI: (keyof Genome)[] = [
@@ -105,7 +106,9 @@ export function upgradeGenome(input: Partial<Genome> | Genome): Genome {
   }
 }
 
-export type FounderBreed = 'Bengal' | 'Maine Coon' | 'Siberian' | 'Custom'
+export type FounderBreed =
+  | 'Bengal' | 'Maine Coon' | 'Siberian' | 'Custom'
+  | 'Red Fox' | 'Arctic Fox' | 'Fennec Fox' | 'Silver Fox' | 'Custom Fox'
 export type FounderMutation = 'none' | MutationKey
 
 export interface FounderCustomization {
@@ -120,37 +123,75 @@ export interface FounderCustomization {
   earShape: EarShape
 }
 
+interface FounderProfile {
+  species:Species
+  size:number
+  height:number
+  length:number
+  muscle:number
+  fur:number
+  rosette:number
+  tail:number
+  leg:number
+  ear:number
+  earShape:EarShape
+  skull:number
+  muzzle:number
+  canine:number
+  warmth:number
+  intensity:number
+  dilution:number
+  silver:number
+}
+
+export const FOUNDER_PROFILES:Record<FounderBreed,FounderProfile> = {
+  Bengal:{species:'cat',size:.58,height:.58,length:.62,muscle:.65,fur:.20,rosette:.90,tail:.72,leg:.66,ear:.56,earShape:'pointed',skull:.56,muzzle:.55,canine:.58,warmth:.58,intensity:.72,dilution:.18,silver:.42},
+  'Maine Coon':{species:'cat',size:.80,height:.78,length:.84,muscle:.70,fur:.90,rosette:.15,tail:.78,leg:.60,ear:.72,earShape:'pointed',skull:.72,muzzle:.48,canine:.58,warmth:.48,intensity:.68,dilution:.22,silver:.28},
+  Siberian:{species:'cat',size:.76,height:.74,length:.76,muscle:.78,fur:.82,rosette:.12,tail:.72,leg:.61,ear:.54,earShape:'balanced',skull:.63,muzzle:.49,canine:.60,warmth:.50,intensity:.68,dilution:.22,silver:.25},
+  Custom:{species:'cat',size:.60,height:.60,length:.60,muscle:.60,fur:.45,rosette:.45,tail:.68,leg:.58,ear:.52,earShape:'balanced',skull:.56,muzzle:.52,canine:.50,warmth:.50,intensity:.68,dilution:.22,silver:.28},
+
+  'Red Fox':{species:'fox',size:.62,height:.64,length:.70,muscle:.60,fur:.60,rosette:.08,tail:.82,leg:.67,ear:.64,earShape:'pointed',skull:.46,muzzle:.78,canine:.60,warmth:.92,intensity:.72,dilution:.16,silver:.10},
+  'Arctic Fox':{species:'fox',size:.52,height:.46,length:.54,muscle:.56,fur:.94,rosette:.05,tail:.80,leg:.52,ear:.28,earShape:'rounded',skull:.58,muzzle:.60,canine:.54,warmth:.58,intensity:.38,dilution:.90,silver:.88},
+  'Fennec Fox':{species:'fox',size:.14,height:.15,length:.25,muscle:.32,fur:.28,rosette:.05,tail:.66,leg:.54,ear:.98,earShape:'pointed',skull:.36,muzzle:.62,canine:.42,warmth:.80,intensity:.38,dilution:.78,silver:.08},
+  'Silver Fox':{species:'fox',size:.64,height:.63,length:.69,muscle:.61,fur:.64,rosette:.06,tail:.84,leg:.65,ear:.60,earShape:'pointed',skull:.48,muzzle:.77,canine:.60,warmth:.24,intensity:.82,dilution:.25,silver:.82},
+  'Custom Fox':{species:'fox',size:.58,height:.58,length:.64,muscle:.58,fur:.58,rosette:.08,tail:.78,leg:.64,ear:.62,earShape:'pointed',skull:.48,muzzle:.72,canine:.56,warmth:.76,intensity:.66,dilution:.28,silver:.18},
+}
+
+export function breedsForSpecies(species:Species):FounderBreed[] {
+  return (Object.keys(FOUNDER_PROFILES) as FounderBreed[]).filter(breed=>FOUNDER_PROFILES[breed].species===species)
+}
+
 function shapeGene(shape:EarShape) {
   return shape==='rounded'?.18:shape==='pointed'?.86:.52
 }
 
 function founderOptions(
   customization:FounderMutation | Partial<FounderCustomization>,
-  profile:{length:number;fur:number;rosette:number},
+  profile:FounderProfile,
 ):FounderCustomization {
   if (typeof customization==='string') {
     return {
       mutations:customization==='none'?[]:[customization],
       pattern:'auto',
       furLength:profile.fur,
-      tailLength:.68,
+      tailLength:profile.tail,
       bodyLength:profile.length,
-      canineLength:.50,
-      legLength:.58,
-      earSize:.52,
-      earShape:'balanced',
+      canineLength:profile.canine,
+      legLength:profile.leg,
+      earSize:profile.ear,
+      earShape:profile.earShape,
     }
   }
   return {
     mutations:customization.mutations || [],
     pattern:customization.pattern || 'auto',
     furLength:unitClamp(customization.furLength ?? profile.fur),
-    tailLength:unitClamp(customization.tailLength ?? .68),
+    tailLength:unitClamp(customization.tailLength ?? profile.tail),
     bodyLength:unitClamp(customization.bodyLength ?? profile.length),
-    canineLength:unitClamp(customization.canineLength ?? .50),
-    legLength:unitClamp(customization.legLength ?? .58),
-    earSize:unitClamp(customization.earSize ?? .52),
-    earShape:customization.earShape || 'balanced',
+    canineLength:unitClamp(customization.canineLength ?? profile.canine),
+    legLength:unitClamp(customization.legLength ?? profile.leg),
+    earSize:unitClamp(customization.earSize ?? profile.ear),
+    earShape:customization.earShape || profile.earShape,
   }
 }
 
@@ -162,15 +203,10 @@ export function createFounder(
   colorBias = 0.5,
   customization: FounderMutation | Partial<FounderCustomization> = 'none',
 ): Individual {
-  const seedText = `${name}-${sex}-${breed}-${Date.now()}-${Math.random()}`
+  const p=FOUNDER_PROFILES[breed]
+  const species=p.species
+  const seedText = `${name}-${sex}-${species}-${breed}-${Date.now()}-${Math.random()}`
   const r = rngFromSeed(seedText)
-  const profiles: Record<FounderBreed, {size:number; height:number; length:number; muscle:number; fur:number; rosette:number}> = {
-    Bengal: { size:.58, height:.58, length:.62, muscle:.65, fur:.2, rosette:.9 },
-    'Maine Coon': { size:.80, height:.78, length:.84, muscle:.70, fur:.9, rosette:.15 },
-    Siberian: { size:.76, height:.74, length:.76, muscle:.78, fur:.82, rosette:.12 },
-    Custom: { size:.60, height:.60, length:.60, muscle:.60, fur:.45, rosette:.45 },
-  }
-  const p = profiles[breed]
   const options=founderOptions(customization,p)
   const patternGene =
     options.pattern==='solid'?.10:
@@ -181,28 +217,28 @@ export function createFounder(
   const genome: Genome = {
     sizePotential: pair(p.size,.16,r),
     growthDuration: pair(p.size,.18,r),
-    boneMass: pair(p.size,.16,r),
+    boneMass: pair(Math.max(.18,p.size),.16,r),
     muscleMass: pair(p.muscle,.16,r),
     shoulderHeight: pair(p.height,.16,r),
     bodyLength: pair(options.bodyLength,.08,r),
     legLength: pair(options.legLength,.08,r),
-    skullWidth: pair(breed === 'Maine Coon' ? .72 : .56,.17,r),
-    muzzleLength: pair(breed === 'Bengal' ? .55 : .48,.16,r),
+    skullWidth: pair(p.skull,.12,r),
+    muzzleLength: pair(p.muzzle,.12,r),
     canineLength:pair(options.canineLength,.08,r),
     earSize:pair(options.earSize,.08,r),
     earShape:pair(shapeGene(options.earShape),.06,r),
     tailLength: pair(options.tailLength,.08,r),
     furLength: pair(options.furLength,.08,r),
-    pigmentWarmth: pair(colorBias,.25,r),
-    pigmentIntensity: pair(.68,.20,r),
-    dilution: pair(.22,.18,r),
-    silver: pair(breed === 'Bengal' ? .42 : .25,.30,r),
+    pigmentWarmth: pair((p.warmth+colorBias)/2,.16,r),
+    pigmentIntensity: pair(p.intensity,.16,r),
+    dilution: pair(p.dilution,.14,r),
+    silver: pair(p.silver,.18,r),
     rosette: pair(patternGene,.08,r),
-    patternDensity: pair(.66,.20,r),
+    patternDensity: pair(species==='fox'?.24:.66,.18,r),
     melanism: [0, 0],
     albinism: [0, 0],
     leucism: [0, 0],
-    piebald: [0, r() < .08 ? 1 : 0],
+    piebald: [0, r() < (species==='fox'?.03:.08) ? 1 : 0],
   }
 
   for (const mutation of options.mutations) {
@@ -217,9 +253,10 @@ export function createFounder(
     id: crypto.randomUUID(),
     name,
     sex,
+    species,
     generation: 0,
     lineage,
-    genomeSchema: 'Feline_01',
+    genomeSchema: species==='fox'?'Vulpine_01':'Feline_01',
     genome,
     phenotype: {} as Phenotype,
     seed,
