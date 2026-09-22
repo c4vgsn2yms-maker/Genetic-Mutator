@@ -17,10 +17,10 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
     <div className="viewer-3d-shell imported-fbx-live-viewer">
       <div className={`render-status ${loadState==='error'?'unavailable':'active'}`}>
         {loadState==='loading'
-          ? `3D BUILD 8.4 · loading ${speciesLabel} model`
+          ? `3D BUILD 8.5 · loading ${speciesLabel} model`
           : loadState==='ready'
-            ? `3D BUILD 8.4 · animated ${speciesLabel} active`
-            : `3D BUILD 8.4 · ${speciesLabel} model unavailable`}
+            ? `3D BUILD 8.5 · animated ${speciesLabel} active`
+            : `3D BUILD 8.5 · ${speciesLabel} model unavailable`}
       </div>
 
       <Canvas
@@ -48,7 +48,8 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
           shadow-mapSize-height={1024}
         />
         <directionalLight position={[-4,3.2,4.5]} intensity={.46} color="#d5e3ee" />
-        <directionalLight position={[-3.5,5,-5]} intensity={.58} color="#efe4cf" />
+        <directionalLight position={[-3.5,5,-5]} intensity={1.05} color="#efe4cf" />
+        <directionalLight position={[1.5,3.5,-6]} intensity={.72} color="#f8efe2" />
 
         <CatEnvironment environment={environment} />
         {isFox
@@ -91,8 +92,8 @@ export function Cat3DViewer({animal,environment}:{animal:Individual;environment:
         )}
         {loadState==='ready'
           ? isFox
-          ? `Viewing ${animal.name} · fox phenotype + inherited mutations + habitat selection`
-          : `Viewing ${animal.name} · cat phenotype + breathing, blinking, ear, tail and attention motion`
+          ? `Viewing ${animal.name} · fox phenotype + moving fur, tail/ear inertia + habitat selection`
+          : `Viewing ${animal.name} · cat phenotype + breathing, blinking, moving fur and soft-body inertia`
           : loadState==='error'
             ? `The external ${speciesLabel} model could not be loaded. Try refreshing or opening the site again.`
             : `Loading the ${speciesLabel} model…`}
