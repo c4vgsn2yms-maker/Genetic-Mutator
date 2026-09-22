@@ -336,7 +336,9 @@ function createFurMaterial(
     side:THREE.DoubleSide,
     sheen:layer.name==='guard'?.66:.36,
     sheenRoughness:.70,
-    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.12),
+    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.18),
+    emissive:layer.name==='guard'?new THREE.Color(coatColor).multiplyScalar(.025):new THREE.Color('#000000'),
+    emissiveIntensity:layer.name==='guard'?1:0,
   })
 
   const physics:FurPhysicsState={
@@ -435,8 +437,8 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:2.25,
-        widthScale:2.2,
+        lengthScale:2.55,
+        widthScale:2.75,
         leanScale:.26,
         physicsStrength:1.35,
         seedOffset:0x2bf1,
