@@ -8,6 +8,7 @@ import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
 import { attachRealFur } from './realFur'
 import { smoothCreatureSurface } from './surfaceFinish'
+import { createCreatureSoftPhysics } from './creatureSoftPhysics'
 
 const FOX_GLB_URL =
   'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb'
@@ -32,6 +33,8 @@ export function ImportedFoxGLB({
   const [clips,setClips]=useState<THREE.AnimationClip[]>([])
   const [error,setError]=useState<string|null>(null)
   const mixerRef=useRef<THREE.AnimationMixer|null>(null)
+  const softPhysicsRef=useRef<ReturnType<typeof createCreatureSoftPhysics>|null>(null)
+  const physicsElapsedRef=useRef(0)
 
   const appearance=useMemo(()=>resolveVisibleAppearance(animal),[
     animal.phenotype.coatHex,
@@ -176,23 +179,36 @@ export function ImportedFoxGLB({
   },[display,onFurCount])
 
   useEffect(()=>{
-    if (!display || !clips.length) return
-    const mixer=new THREE.AnimationMixer(display)
-    mixerRef.current=mixer
-    const idle=
-      clips.find(c=>/survey|idle|stand/i.test(c.name)) ||
-      clips.find(c=>!/walk|run/i.test(c.name)) ||
-      clips[0]
-    if (idle) mixer.clipAction(idle).reset().fadeIn(.15).play()
+    if (!display) return
+
+    let mixer:THREE.AnimationMixer|null=null
+    if (clips.length) {
+      mixer=new THREE.AnimationMixer(display)
+      mixerRef.current=mixer
+      const idle=
+        clips.find(c=>/survey|idle|stand/i.test(c.name)) ||
+        clips.find(c=>!/walk|run/i.test(c.name)) ||
+        clips[0]
+      if (idle) mixer.clipAction(idle).reset().fadeIn(.15).play()
+    }
+
+    const softPhysics=createCreatureSoftPhysics(display,clips,animal.seed)
+    softPhysicsRef.current=softPhysics
 
     return ()=>{
-      mixer.stopAllAction()
-      mixer.uncacheRoot(display)
+      mixer?.stopAllAction()
+      if (mixer) mixer.uncacheRoot(display)
       if (mixerRef.current===mixer) mixerRef.current=null
+      if (softPhysicsRef.current===softPhysics) softPhysicsRef.current=null
     }
-  },[display,clips])
+  },[display,clips,animal.seed])
 
-  useFrame((_,delta)=>mixerRef.current?.update(Math.min(delta,.05)))
+  useFrame((_,delta)=>{
+    const dt=Math.min(delta,.05)
+    mixerRef.current?.update(dt)
+    physicsElapsedRef.current+=dt
+    softPhysicsRef.current?.update(dt,physicsElapsedRef.current)
+  })
 
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
 
