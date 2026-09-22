@@ -18,6 +18,7 @@ import type {
   CoatPattern,
   EarShape,
   EnvironmentSettings,
+  FurTextureLabel,
   Individual,
   MutationKey,
   SimulationState,
@@ -42,6 +43,35 @@ const FOUNDER_PRESETS:Record<FounderBreed,Pick<FounderCustomization,'furLength'|
 const BREEDS_BY_SPECIES:Record<Species,FounderBreed[]> = {
   cat:['Bengal','Maine Coon','Siberian','Custom'],
   fox:['Red Fox','Arctic Fox','Fennec Fox','Silver Fox','Custom Fox'],
+}
+
+const FOUNDER_TEXTURE_BY_BREED:Record<FounderBreed,FurTextureLabel> = {
+  Bengal:'smooth',
+  'Maine Coon':'plush',
+  Siberian:'plush',
+  Custom:'smooth',
+  'Red Fox':'coarse',
+  'Arctic Fox':'plush',
+  'Fennec Fox':'smooth',
+  'Silver Fox':'coarse',
+  'Custom Fox':'coarse',
+}
+
+const FUR_TEXTURE_PRESETS:Record<FurTextureLabel,{
+  coarseness:number
+  curl:number
+  wire:number
+  lay:number
+  plush:number
+  gloss:number
+}> = {
+  smooth:{coarseness:.20,curl:.04,wire:.04,lay:.90,plush:.36,gloss:.66},
+  coarse:{coarseness:.82,curl:.06,wire:.28,lay:.48,plush:.34,gloss:.24},
+  wiry:{coarseness:.88,curl:.12,wire:.92,lay:.30,plush:.20,gloss:.16},
+  curly:{coarseness:.34,curl:.94,wire:.10,lay:.24,plush:.70,gloss:.40},
+  wavy:{coarseness:.30,curl:.48,wire:.08,lay:.46,plush:.56,gloss:.50},
+  silky:{coarseness:.10,curl:.05,wire:.03,lay:.94,plush:.36,gloss:.92},
+  plush:{coarseness:.26,curl:.08,wire:.05,lay:.60,plush:.96,gloss:.44},
 }
 
 const ENVIRONMENT_PRESETS:EnvironmentSettings[] = [
@@ -127,6 +157,13 @@ export function App() {
   const [founderPattern,setFounderPattern]=useState<'auto'|CoatPattern>('auto')
   const [founderMutations,setFounderMutations]=useState<MutationKey[]>([])
   const [founderFurLength,setFounderFurLength]=useState(.45)
+  const [founderFurTexture,setFounderFurTexture]=useState<FurTextureLabel>('smooth')
+  const [founderFurCoarseness,setFounderFurCoarseness]=useState(.20)
+  const [founderFurCurl,setFounderFurCurl]=useState(.04)
+  const [founderFurWire,setFounderFurWire]=useState(.04)
+  const [founderFurLayFlatness,setFounderFurLayFlatness]=useState(.90)
+  const [founderFurPlushness,setFounderFurPlushness]=useState(.36)
+  const [founderCoatGloss,setFounderCoatGloss]=useState(.66)
   const [founderTailLength,setFounderTailLength]=useState(.68)
   const [founderBodyLength,setFounderBodyLength]=useState(.60)
   const [founderCanineLength,setFounderCanineLength]=useState(.50)
@@ -170,10 +207,22 @@ export function App() {
     applyBreedPreset(breed)
   }
 
+  function applyFurTexturePreset(texture:FurTextureLabel) {
+    setFounderFurTexture(texture)
+    const p=FUR_TEXTURE_PRESETS[texture]
+    setFounderFurCoarseness(p.coarseness)
+    setFounderFurCurl(p.curl)
+    setFounderFurWire(p.wire)
+    setFounderFurLayFlatness(p.lay)
+    setFounderFurPlushness(p.plush)
+    setFounderCoatGloss(p.gloss)
+  }
+
   function applyBreedPreset(breed:FounderBreed) {
     setFounderBreed(breed)
     const p=FOUNDER_PRESETS[breed]
     setFounderFurLength(p.furLength)
+    applyFurTexturePreset(FOUNDER_TEXTURE_BY_BREED[breed])
     setFounderTailLength(p.tailLength)
     setFounderBodyLength(p.bodyLength)
     setFounderCanineLength(p.canineLength)
@@ -243,6 +292,13 @@ export function App() {
     const customization:FounderCustomization={
       mutations:founderMutations,
       pattern:founderPattern,
+      furTexture:founderFurTexture,
+      furCoarseness:founderFurCoarseness,
+      furCurl:founderFurCurl,
+      furWire:founderFurWire,
+      furLayFlatness:founderFurLayFlatness,
+      furPlushness:founderFurPlushness,
+      coatGloss:founderCoatGloss,
       furLength:founderFurLength,
       tailLength:founderTailLength,
       bodyLength:founderBodyLength,
@@ -313,6 +369,12 @@ export function App() {
                 <div><span>Canine length</span><strong>{length(selected.phenotype.canineLengthCm,state.units)}</strong></div>
                 <div><span>Ears</span><strong>{selected.phenotype.earShape} · {selected.phenotype.earSize.toFixed(2)}×</strong></div>
                 <div><span>Fur density</span><strong>{selected.phenotype.furDensityPerSqIn.toLocaleString()} hairs/in²</strong></div>
+                <div><span>Coat texture</span><strong>{selected.phenotype.furTextureLabel}</strong></div>
+                <div><span>Lay flatness</span><strong>{selected.phenotype.furLayFlatness.toFixed(2)}</strong></div>
+                <div><span>Coarseness / wire</span><strong>{selected.phenotype.furCoarseness.toFixed(2)} / {selected.phenotype.furWireStrength.toFixed(2)}</strong></div>
+                <div><span>Curl / wave</span><strong>{selected.phenotype.furCurlStrength.toFixed(2)} / {selected.phenotype.furWaveStrength.toFixed(2)}</strong></div>
+                <div><span>Guard / undercoat</span><strong>{selected.phenotype.guardHairThickness.toFixed(2)} / {selected.phenotype.undercoatDepth.toFixed(2)}</strong></div>
+                <div><span>Coat gloss</span><strong>{selected.phenotype.coatGloss.toFixed(2)}</strong></div>
                 <div><span>Habitat fitness</span><strong>{percent(selectedFitness)}</strong></div>
               </div>
               <div className="tag-row">
@@ -320,6 +382,7 @@ export function App() {
                 <span className="tag">{selected.lineage}</span>
                 <span className="tag">{selected.phenotype.coatName}</span>
                 <span className="tag">{selected.phenotype.pattern}</span>
+                <span className="tag">{selected.phenotype.furTextureLabel} coat</span>
                 {selected.phenotype.mutationLabels.map(m => <span className="tag mutation" key={m}>{m}</span>)}
                 {selectedAdaptations.map(a=><span className="tag adaptation" key={a}>{a}</span>)}
               </div>
@@ -473,6 +536,35 @@ export function App() {
                 <label>Fur length <span className="inline-value">{percent(founderFurLength)}</span>
                   <input type="range" min=".05" max=".98" step=".01" value={founderFurLength} onChange={e=>setFounderFurLength(Number(e.target.value))} />
                 </label>
+                <label>Fur texture
+                  <select value={founderFurTexture} onChange={e=>applyFurTexturePreset(e.target.value as FurTextureLabel)}>
+                    <option value="smooth">Smooth</option>
+                    <option value="coarse">Coarse</option>
+                    <option value="wiry">Wiry</option>
+                    <option value="curly">Curly</option>
+                    <option value="wavy">Wavy</option>
+                    <option value="silky">Silky</option>
+                    <option value="plush">Plush</option>
+                  </select>
+                </label>
+                <label>Coarseness <span className="inline-value">{percent(founderFurCoarseness)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderFurCoarseness} onChange={e=>setFounderFurCoarseness(Number(e.target.value))} />
+                </label>
+                <label>Curl <span className="inline-value">{percent(founderFurCurl)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderFurCurl} onChange={e=>setFounderFurCurl(Number(e.target.value))} />
+                </label>
+                <label>Wire <span className="inline-value">{percent(founderFurWire)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderFurWire} onChange={e=>setFounderFurWire(Number(e.target.value))} />
+                </label>
+                <label>Lay flatness <span className="inline-value">{percent(founderFurLayFlatness)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderFurLayFlatness} onChange={e=>setFounderFurLayFlatness(Number(e.target.value))} />
+                </label>
+                <label>Plushness <span className="inline-value">{percent(founderFurPlushness)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderFurPlushness} onChange={e=>setFounderFurPlushness(Number(e.target.value))} />
+                </label>
+                <label>Coat gloss <span className="inline-value">{percent(founderCoatGloss)}</span>
+                  <input type="range" min="0" max="1" step=".01" value={founderCoatGloss} onChange={e=>setFounderCoatGloss(Number(e.target.value))} />
+                </label>
                 <label>Tail length <span className="inline-value">{percent(founderTailLength)}</span>
                   <input type="range" min=".05" max=".98" step=".01" value={founderTailLength} onChange={e=>setFounderTailLength(Number(e.target.value))} />
                 </label>
@@ -498,7 +590,7 @@ export function App() {
                 </select>
               </label>
 
-              <p className="helper">These controls seed inherited genes, not permanent presets. Cats use Feline_01 and foxes use Vulpine_01, so they breed only within their own species. Descendants recombine and mutate traits normally; albinism remains epistatic over melanin-dependent coat effects.</p>
+              <p className="helper">These controls seed inherited genes, not permanent presets. Fur texture, curl, wire, lay, plushness and gloss recombine and mutate in descendants just like body traits. Cats use Feline_01 and foxes use Vulpine_01, so they breed only within their own species.</p>
               <button className="secondary wide" type="submit">Add customized founder</button>
             </form>
           </section>
