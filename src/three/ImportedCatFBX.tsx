@@ -6,6 +6,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { Group, Material, Mesh, MeshStandardMaterial } from 'three'
 import type { Individual } from '../types'
 import { coatRoughness, createCoatTexture, resolveVisibleAppearance } from './catMaterial'
+import { createCatLifeController } from './catLife'
 
 const CAT_FBX_URL =
   'https://raw.githubusercontent.com/nrz/ylikuutio/adcb264480542b2a6ca16cedbd1afecc605cb2d6/res/objects/www.blendswap.com/86110_rigged_and_animated_cat/cat.fbx'
@@ -17,7 +18,7 @@ function cloneMaterial(material:Material):Material {
   return material.clone()
 }
 
-function attachVisibleEyes(root:Group,eyeColor:string) {
+function attachVisibleEyes(root:Group,eyeColor:string,eyelidColor:string) {
   let headBone:THREE.Bone|null=null
   let bestScore=-1
 
@@ -111,6 +112,25 @@ function attachVisibleEyes(root:Group,eyeColor:string) {
     glint.userData.generatedEye=true
     eyeGroup.add(glint)
 
+    // A thin coat-colored cover expands only during a blink. This reads much
+    // more naturally than scaling the eyeball itself and works even when the
+    // source FBX has no eyelid morph targets.
+    const blinkCover=new THREE.Mesh(
+      new THREE.CircleGeometry(.96,28),
+      new THREE.MeshStandardMaterial({
+        color:new THREE.Color(eyelidColor),
+        roughness:.72,
+        metalness:0,
+        side:THREE.DoubleSide,
+      }),
+    )
+    blinkCover.position.set(0,0,.91)
+    blinkCover.scale.set(1,.03,1)
+    blinkCover.visible=false
+    blinkCover.userData.generatedEye=true
+    blinkCover.userData.generatedEyelid=true
+    eyeGroup.add(blinkCover)
+
     root.add(eyeGroup)
     root.updateMatrixWorld(true)
     ;(headBone as THREE.Bone).attach(eyeGroup)
@@ -127,6 +147,7 @@ export function ImportedCatFBX({
   const [source,setSource]=useState<Group|null>(null)
   const [error,setError]=useState<string|null>(null)
   const mixerRef=useRef<THREE.AnimationMixer|null>(null)
+  const lifeRef=useRef<ReturnType<typeof createCatLifeController>|null>(null)
   const appearance=useMemo(()=>resolveVisibleAppearance(animal),[
     animal.phenotype.coatHex,
     animal.phenotype.patternHex,
@@ -297,7 +318,7 @@ export function ImportedCatFBX({
     // Some versions of this FBX render the original eyes too dark or too
     // deeply recessed to read. Add glossy, head-bone-attached eyes so every
     // phenotype has clearly visible eyeballs and mutation-aware eye color.
-    attachVisibleEyes(clone,appearance.eyeColor)
+    attachVisibleEyes(clone,appearance.eyeColor,appearance.baseCoatColor)
 
     return clone
   },[source,animal,coatTexture,appearance])
@@ -305,25 +326,33 @@ export function ImportedCatFBX({
   useEffect(()=>{
     if (!display) return
     const clips=(source?.animations || []).filter(Boolean)
-    if (!clips.length) return
 
-    const mixer=new THREE.AnimationMixer(display)
-    mixerRef.current=mixer
-    const idle=
-      clips.find(c=>/idle|stand|rest/i.test(c.name)) ||
-      clips.find(c=>!/walk|run|jump|attack/i.test(c.name)) ||
-      clips[0]
-    if (idle) mixer.clipAction(idle).reset().fadeIn(.15).play()
+    let mixer:THREE.AnimationMixer|null=null
+    if (clips.length) {
+      mixer=new THREE.AnimationMixer(display)
+      mixerRef.current=mixer
+      const idle=
+        clips.find(c=>/idle|stand|rest/i.test(c.name)) ||
+        clips.find(c=>!/walk|run|jump|attack/i.test(c.name)) ||
+        clips[0]
+      if (idle) mixer.clipAction(idle).reset().fadeIn(.15).play()
+    }
+
+    const life=createCatLifeController(display,clips,animal.seed)
+    lifeRef.current=life
 
     return ()=>{
-      mixer.stopAllAction()
-      mixer.uncacheRoot(display)
+      mixer?.stopAllAction()
+      if (mixer) mixer.uncacheRoot(display)
       if (mixerRef.current===mixer) mixerRef.current=null
+      if (lifeRef.current===life) lifeRef.current=null
     }
-  },[display,source])
+  },[display,source,animal.seed])
 
   useFrame((_,delta)=>{
-    mixerRef.current?.update(Math.min(delta,.05))
+    const dt=Math.min(delta,.05)
+    mixerRef.current?.update(dt)
+    lifeRef.current?.update(dt)
   })
 
   useEffect(()=>()=>{ coatTexture?.dispose() },[coatTexture])
