@@ -24,6 +24,7 @@ export interface Genome {
   earShape: GenePair
   tailLength: GenePair
   furLength: GenePair
+  furDensity: GenePair
   pigmentWarmth: GenePair
   pigmentIntensity: GenePair
   dilution: GenePair
@@ -48,6 +49,7 @@ export interface Phenotype {
   earShape: EarShape
   tailLengthCm: number
   furLength: number
+  furDensityPerSqIn: number
   coatName: string
   coatHex: string
   pattern: CoatPattern
