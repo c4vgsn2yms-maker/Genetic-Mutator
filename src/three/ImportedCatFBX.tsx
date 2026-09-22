@@ -328,15 +328,19 @@ export function ImportedCatFBX({
 
     // Real geometric fur: thousands of tapered, individually skinned fibers
     // protrude from the body surface and follow the cat skeleton.
-    const furCount=attachRealFur(clone,{
+    attachRealFur(clone,{
       animal,
       coatTexture,
       coatColor:appearance.baseCoatColor,
     })
-    onFurCount?.(furCount)
 
     return clone
-  },[source,animal,coatTexture,appearance,onFurCount])
+  },[source,animal,coatTexture,appearance])
+
+  useEffect(()=>{
+    if (!display) return
+    onFurCount?.(Number(display.userData.generatedFurCount || 0))
+  },[display,onFurCount])
 
   useEffect(()=>{
     if (!display) return
