@@ -352,8 +352,8 @@ function groomDirection(
   // collapse every strand into a nearly tangent ribbon. A small minimum
   // stand-off preserves readable individual hairs while the coat still
   // follows the body instead of reverting to the old porcupine look.
-  const layerBase=layerName==='guard' ? .18 : .11
-  const layerMax=layerName==='guard' ? .64 : .48
+  const layerBase=layerName==='guard' ? .205 : .125
+  const layerMax=layerName==='guard' ? .66 : .50
   const standOff=clamp(
     layerBase+(1-layFlatness)*.46+furWire*.14,
     layerBase,
@@ -384,7 +384,7 @@ function buildFurGeometry(
     phenotype.furCurlStrength*.10+
     phenotype.furWireStrength*.08-
     phenotype.furLayFlatness*.08
-  const baseLength=diagonal*(.0030+furLength*.0093)*speciesFactor*layer.lengthScale*textureLift
+  const baseLength=diagonal*(.0032+furLength*.0100)*speciesFactor*layer.lengthScale*textureLift
   const maxBend=baseLength*(layer.name==='guard'?.80:.48)
   const segments=layer.name==='guard' ? 2 : 1
   const vertexPerSegment=6
@@ -533,15 +533,15 @@ function buildFurGeometry(
     // thickness genes control the result.
     const mobileWidthBoost=
       typeof navigator!=='undefined' && /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent)
-        ? 1.22
+        ? 1.34
         : 1
     const width=
       length*
-      (.015+rng()*.009)*
+      (.0165+rng()*.0105)*
       layer.widthScale*
       (.72+thicknessGene*.72)*
       mobileWidthBoost
-    const lift=length*.0045
+    const lift=length*.006
     const phase=rng()*Math.PI*2
     const waveAmp=length*(.02+.12*phenotype.furWaveStrength)*(layer.name==='guard'?1:.35)
     const curlAmp=length*(.02+.16*phenotype.furCurlStrength)*(layer.name==='guard'?1:.25)
@@ -605,16 +605,16 @@ function createFurMaterial(
   const material=new THREE.MeshPhysicalMaterial({
     color:coatTexture?'#ffffff':coatColor,
     map:coatTexture || null,
-    roughness:clamp(.92-p.coatGloss*.48+p.furCoarseness*.14, .34,.94),
+    roughness:clamp(.88-p.coatGloss*.50+p.furCoarseness*.12, .30,.92),
     metalness:0,
     side:THREE.DoubleSide,
-    sheen:clamp(.22+p.furSilkiness*.58+p.coatGloss*.20,.18,.92),
-    sheenRoughness:clamp(.86-p.coatGloss*.42+p.furCoarseness*.10,.36,.92),
-    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.10+p.furSilkiness*.18),
+    sheen:clamp(.30+p.furSilkiness*.54+p.coatGloss*.24,.24,.96),
+    sheenRoughness:clamp(.80-p.coatGloss*.44+p.furCoarseness*.08,.30,.88),
+    sheenColor:new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.16+p.furSilkiness*.20),
     emissive:layer.name==='guard'
-      ? new THREE.Color(coatColor).multiplyScalar(.025)
-      : new THREE.Color('#000000'),
-    emissiveIntensity:layer.name==='guard'?1:0,
+      ? new THREE.Color(coatColor).lerp(new THREE.Color('#ffffff'),.10).multiplyScalar(.045)
+      : new THREE.Color(coatColor).multiplyScalar(.006),
+    emissiveIntensity:1,
   })
 
   material.userData.furGuidePhysics=physics
@@ -719,7 +719,7 @@ export function attachRealFur(root:Group,{animal,coatTexture,coatColor}:FurOptio
       {
         name:'guard',
         count:Math.max(220,Math.round(totalGuard*share)),
-        lengthScale:1.12+.40*animal.phenotype.furCoarseness+.24*animal.phenotype.furCurlStrength,
+        lengthScale:1.20+.42*animal.phenotype.furCoarseness+.25*animal.phenotype.furCurlStrength,
         widthScale:.22+.18*animal.phenotype.guardHairThickness,
         leanScale:.08+.18*animal.phenotype.furWireStrength+.10*animal.phenotype.furWaveStrength,
         physicsStrength:.82+.30*(1-animal.phenotype.guardHairStiffness)+.18*animal.phenotype.furCurlStrength,
