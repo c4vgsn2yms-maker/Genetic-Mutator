@@ -420,3 +420,29 @@ input[type=range] { padding:4px 0; accent-color:#8eb9a7; }
 @media (max-width:560px) {
   .trait-editor-grid,.mutation-grid { grid-template-columns:1fr; }
 }
+
+
+/* Phase 8.8.2: clean 3D viewport — no status, stats or credit overlays. */
+.viewer-3d-frame { display:grid; gap:7px; }
+.viewer-asset-note {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 2px;
+  color:#77838f;
+  font-size:.64rem;
+  line-height:1.35;
+}
+.viewer-asset-note a {
+  color:#8eb9a7;
+  font-weight:750;
+  text-decoration:none;
+}
+.viewer-asset-note a:hover { text-decoration:underline; }
+@media (max-width:560px) {
+  .viewer-asset-note {
+    flex-direction:column;
+    gap:1px;
+    font-size:.57rem;
+  }
+}
